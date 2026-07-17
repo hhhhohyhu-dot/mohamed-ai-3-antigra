@@ -1,27 +1,28 @@
 import os
 import json
-from openai import OpenAI
+import google.generativeai as genai
 from dotenv import load_dotenv
 
 load_dotenv()
 
-# Initialize OpenAI client
-api_key = os.getenv("OPENAI_API_KEY", "")
+# Initialize Gemini client
+api_key = os.getenv("GEMINI_API_KEY", "")
+client_configured = False
 if api_key:
-    client = OpenAI(api_key=api_key)
-    # Recommended model for structured JSON and reasoning
-    model = "gpt-4o-mini"
+    genai.configure(api_key=api_key)
+    # Using gemini-1.5-flash as the recommended model for text and fast responses
+    model = genai.GenerativeModel('gemini-1.5-flash')
+    client_configured = True
 else:
-    client = None
     model = None
 
 
 def analyze_sentiment(news_items: list) -> dict:
     """
-    Analyzes sentiment based on recent news using OpenAI.
+    Analyzes sentiment based on recent news using Gemini.
     """
-    if not client:
-        return {"score": 50, "summary": "OpenAI API key not configured.", "label": "Neutral"}
+    if not client_configured:
+        return {"score": 50, "summary": "Gemini API key not configured.", "label": "Neutral"}
 
     if not news_items:
         return {"score": 50, "summary": "No recent news available.", "label": "Neutral"}
@@ -30,7 +31,7 @@ def analyze_sentiment(news_items: list) -> dict:
 
     prompt = f"""
     Analyze the sentiment of the following recent news headlines for a financial asset.
-    Respond ONLY with a valid JSON object (no markdown, no extra text) with these fields:
+    Respond ONLY with a valid JSON object (no markdown, no extra text, no json codeblocks) with these fields:
     - score: integer 0 to 100 (0=very bearish, 100=very bullish)
     - summary: A 1-sentence explanation.
     - label: "Bullish", "Bearish", or "Neutral"
@@ -40,15 +41,11 @@ def analyze_sentiment(news_items: list) -> dict:
     """
 
     try:
-        response = client.chat.completions.create(
-            model=model,
-            messages=[
-                {"role": "system", "content": "You are a helpful financial sentiment analyzer. Output only valid JSON."},
-                {"role": "user", "content": prompt}
-            ],
-            response_format={"type": "json_object"}
+        response = model.generate_content(
+            prompt,
+            generation_config=genai.GenerationConfig(response_mime_type="application/json")
         )
-        text = response.choices[0].message.content.strip()
+        text = response.text.strip()
         return json.loads(text)
     except Exception as e:
         return {"score": 50, "summary": f"Error analyzing sentiment: {str(e)}", "label": "Neutral"}
@@ -56,12 +53,12 @@ def analyze_sentiment(news_items: list) -> dict:
 
 def generate_trading_plan(symbol: str, indicators: dict) -> dict:
     """
-    Generates AI Buy/Sell/Hold signals and a Trading Plan using OpenAI.
+    Generates AI Buy/Sell/Hold signals and a Trading Plan using Gemini.
     """
-    if not client:
+    if not client_configured:
         return {
             "signal": "Hold",
-            "explanation": "OpenAI API key not configured.",
+            "explanation": "Gemini API key not configured.",
             "plan": None
         }
 
@@ -80,7 +77,7 @@ def generate_trading_plan(symbol: str, indicators: dict) -> dict:
     4. Candlestick Patterns: 'Candlestick_Pattern' reveals short-term reversal or continuation signs.
     5. Price Action: 'PA_EMA50_Dist_Pct' indicates overextension.
 
-    Respond ONLY with a valid JSON object (no markdown, no extra text) with:
+    Respond ONLY with a valid JSON object (no markdown, no extra text, no json codeblocks) with:
     - signal: "Buy", "Sell", or "Hold"
     - explanation: A detailed 2-4 sentence explanation based on the indicators, explicitly mentioning Market Structure, Volume, Candlestick Patterns, and MTF trend if relevant.
     - plan: An object with (if signal is Buy or Sell):
@@ -93,15 +90,11 @@ def generate_trading_plan(symbol: str, indicators: dict) -> dict:
     """
 
     try:
-        response = client.chat.completions.create(
-            model=model,
-            messages=[
-                {"role": "system", "content": "You are a professional AI trading assistant. Output only valid JSON."},
-                {"role": "user", "content": prompt}
-            ],
-            response_format={"type": "json_object"}
+        response = model.generate_content(
+            prompt,
+            generation_config=genai.GenerationConfig(response_mime_type="application/json")
         )
-        text = response.choices[0].message.content.strip()
+        text = response.text.strip()
         return json.loads(text)
     except Exception as e:
         return {
@@ -113,10 +106,10 @@ def generate_trading_plan(symbol: str, indicators: dict) -> dict:
 
 def chat_with_ai(symbol: str, message: str, context: dict) -> dict:
     """
-    Handles user chat inquiries with context of the current symbol using OpenAI.
+    Handles user chat inquiries with context of the current symbol using Gemini.
     """
-    if not client:
-        return {"response": "OpenAI API key not configured. Cannot chat."}
+    if not client_configured:
+        return {"response": "Gemini API key not configured. Cannot chat."}
 
     prompt = f"""
     You are a professional AI trading assistant for {symbol}.
@@ -130,13 +123,7 @@ def chat_with_ai(symbol: str, message: str, context: dict) -> dict:
     """
 
     try:
-        response = client.chat.completions.create(
-            model=model,
-            messages=[
-                {"role": "system", "content": "You are a professional AI trading assistant."},
-                {"role": "user", "content": prompt}
-            ]
-        )
-        return {"response": response.choices[0].message.content.strip()}
+        response = model.generate_content(prompt)
+        return {"response": response.text.strip()}
     except Exception as e:
         return {"response": f"Chat failed: {str(e)}"}
