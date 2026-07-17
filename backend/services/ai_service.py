@@ -11,7 +11,7 @@ client_configured = False
 if api_key:
     genai.configure(api_key=api_key)
     # Using gemini-1.5-flash as the recommended model for text and fast responses
-    model = genai.GenerativeModel('gemini-pro')
+    model = genai.GenerativeModel('gemini-1.5-flash')
     client_configured = True
 else:
     model = None
@@ -41,7 +41,10 @@ def analyze_sentiment(news_items: list) -> dict:
     """
 
     try:
-        response = model.generate_content(prompt)
+        response = model.generate_content(
+            prompt,
+            generation_config=genai.GenerationConfig(response_mime_type="application/json")
+        )
         text = response.text.strip()
         return json.loads(text)
     except Exception as e:
@@ -87,7 +90,10 @@ def generate_trading_plan(symbol: str, indicators: dict) -> dict:
     """
 
     try:
-        response = model.generate_content(prompt)
+        response = model.generate_content(
+            prompt,
+            generation_config=genai.GenerationConfig(response_mime_type="application/json")
+        )
         text = response.text.strip()
         return json.loads(text)
     except Exception as e:
