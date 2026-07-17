@@ -15,6 +15,24 @@ FOREX_PAIRS = {
     "EURGBP", "EURJPY", "GBPJPY", "AUDJPY", "EURAUD", "EURCAD", "AUDCAD"
 }
 
+# Common broker aliases to Yahoo Finance symbols
+ALIAS_MAPPING = {
+    "XAUUSD": "GC=F",     # Gold
+    "XAGUSD": "SI=F",     # Silver
+    "USOIL": "CL=F",      # WTI Crude Oil
+    "WTI": "CL=F",
+    "UKOIL": "BZ=F",      # Brent Crude
+    "BRENT": "BZ=F",
+    "DXY": "DX-Y.NYB",    # Dollar Index
+    "SPX": "^GSPC",       # S&P 500
+    "US500": "^GSPC",
+    "NDX": "^NDX",        # Nasdaq 100
+    "US100": "^NDX",
+    "NAS100": "^NDX",
+    "US30": "^DJI",       # Dow Jones
+    "DJI": "^DJI"
+}
+
 def normalize_symbol(symbol: str) -> str:
     """
     Normalizes a trading symbol for yfinance.
@@ -22,8 +40,12 @@ def normalize_symbol(symbol: str) -> str:
     - Already suffixed symbols (BTC-USD, ETH-USD) are kept as-is.
     """
     symbol = symbol.upper().strip()
+    # If it's a known alias, return mapped symbol
+    if symbol in ALIAS_MAPPING:
+        return ALIAS_MAPPING[symbol]
+
     # If it already has a suffix like -USD, -EUR, return as-is
-    if "-" in symbol:
+    if "-" in symbol or "=" in symbol or "^" in symbol:
         return symbol
     # If it's a known crypto, append -USD
     if symbol in CRYPTO_SYMBOLS:
