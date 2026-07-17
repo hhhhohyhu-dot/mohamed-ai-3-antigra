@@ -63,7 +63,7 @@ export const TradingChart: React.FC<TradingChartProps> = ({
 
     if (data && data.length > 0) {
       // Filter out invalid OHLC data and duplicates to prevent lightweight-charts crashes
-      const uniqueData = [];
+      const uniqueData: any[] = [];
       const seenTimes = new Set();
       for (const d of data) {
         if (d.time && !seenTimes.has(d.time)) {
