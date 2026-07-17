@@ -25,29 +25,35 @@ export const Dashboard = () => {
   const loadData = async (sym: string) => {
     setLoading(true);
     try {
-      const [chartRes, dashRes, indRes, newsRes, sentRes] = await Promise.all([
+      // Load fast data first (chart, dashboard, indicators, news)
+      const [chartRes, dashRes, indRes, newsRes] = await Promise.all([
         fetchChart(sym),
         fetchDashboard(sym),
         fetchIndicators(sym),
         fetchNews(sym),
-        fetchSentiment(sym)
       ]);
 
       setChartData(chartRes.data || []);
       setDashboardData(dashRes);
       setIndicators(indRes.indicators);
       setNews(newsRes.news);
-      setSentiment(sentRes.sentiment);
+      setLoading(false);
+
+      // Load AI data in the background (won't block the UI)
+      fetchSentiment(sym)
+        .then((sentRes) => setSentiment(sentRes.sentiment))
+        .catch(() => setSentiment({ score: 50, label: "Neutral", summary: "Could not load sentiment." }));
 
       if (indRes.indicators) {
-        const analyzeRes = await fetchAnalyze(sym, indRes.indicators);
-        setAnalysis(analyzeRes.analysis);
+        fetchAnalyze(sym, indRes.indicators)
+          .then((analyzeRes) => setAnalysis(analyzeRes.analysis))
+          .catch(() => setAnalysis({ signal: "Hold", explanation: "AI analysis timed out. Try again.", plan: null }));
       }
 
     } catch (error) {
       console.error("Failed to load data", error);
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   useEffect(() => {
