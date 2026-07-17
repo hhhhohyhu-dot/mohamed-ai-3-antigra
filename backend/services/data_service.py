@@ -1,10 +1,34 @@
 import yfinance as yf
 import pandas as pd
 
+# Known crypto tickers that need -USD suffix on Yahoo Finance
+CRYPTO_SYMBOLS = {
+    "BTC", "ETH", "SOL", "BNB", "XRP", "ADA", "DOGE", "AVAX", "DOT",
+    "MATIC", "LINK", "UNI", "ATOM", "LTC", "BCH", "ALGO", "XLM",
+    "VET", "ICP", "FIL", "TRX", "ETC", "NEAR", "APT", "ARB",
+    "OP", "INJ", "SUI", "SEI", "PEPE", "SHIB", "FLOKI",
+}
+
+def normalize_symbol(symbol: str) -> str:
+    """
+    Normalizes a trading symbol for yfinance.
+    - Crypto tickers (BTC, ETH, etc.) get '-USD' appended automatically.
+    - Already suffixed symbols (BTC-USD, ETH-USD) are kept as-is.
+    """
+    symbol = symbol.upper().strip()
+    # If it already has a suffix like -USD, -EUR, return as-is
+    if "-" in symbol:
+        return symbol
+    # If it's a known crypto, append -USD
+    if symbol in CRYPTO_SYMBOLS:
+        return f"{symbol}-USD"
+    return symbol
+
 def get_historical_data(symbol: str, period: str = "1mo", interval: str = "1d") -> pd.DataFrame:
     """
     Fetches historical OHLCV data using yfinance.
     """
+    symbol = normalize_symbol(symbol)
     ticker = yf.Ticker(symbol)
     df = ticker.history(period=period, interval=interval)
     if df.empty:
@@ -36,6 +60,7 @@ def get_news(symbol: str):
     """
     Fetches latest news for the symbol using yfinance.
     """
+    symbol = normalize_symbol(symbol)
     ticker = yf.Ticker(symbol)
     news = ticker.news
     return news
