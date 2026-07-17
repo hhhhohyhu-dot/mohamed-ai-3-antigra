@@ -118,10 +118,10 @@ export const AITradingSignal: React.FC<AITradingSignalProps> = ({ indicators, cu
   const bullishPatterns = ["Bullish Engulfing", "Hammer", "Morning Star"];
   const bearishPatterns = ["Bearish Engulfing", "Shooting Star", "Evening Star"];
   
-  if (bullishPatterns.includes(Candlestick_Pattern)) {
+  if (Candlestick_Pattern && bullishPatterns.includes(Candlestick_Pattern)) {
     candleScore = 5;
     reasons.push(`✓ Bullish Pattern Detected: ${Candlestick_Pattern}`);
-  } else if (bearishPatterns.includes(Candlestick_Pattern)) {
+  } else if (Candlestick_Pattern && bearishPatterns.includes(Candlestick_Pattern)) {
     candleScore = 0;
     reasons.push(`✗ Bearish Pattern Detected: ${Candlestick_Pattern}`);
   } else if (Candlestick_Pattern === "Doji") {
@@ -185,7 +185,7 @@ export const AITradingSignal: React.FC<AITradingSignalProps> = ({ indicators, cu
       return rec + `Exiting long positions or looking for short entries is recommended until market structure shifts.`;
     } else {
       let rec = `The asset is currently consolidating with mixed signals (Score: ${score}/100). `;
-      if (Market_Structure.includes("Consolidating")) rec += `Price action is trapped in a range without clear directional momentum. `;
+      if (Market_Structure && Market_Structure.includes("Consolidating")) rec += `Price action is trapped in a range without clear directional momentum. `;
       else if (currentPrice < EMA50 && currentPrice > EMA200) rec += `The short-term trend is weak but long-term support holds. `;
       return rec + `Capital preservation is advised. Wait for a definitive breakout or breakdown confirmation before deploying capital.`;
     }

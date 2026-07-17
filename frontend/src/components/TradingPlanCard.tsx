@@ -16,8 +16,8 @@ interface TradingPlanProps {
 export const TradingPlanCard: React.FC<TradingPlanProps> = ({ plan, signal }) => {
   if (!plan) return null;
 
-  const isBuy = signal.includes("Buy");
-  const isSell = signal.includes("Sell");
+  const isBuy = signal?.includes("Buy");
+  const isSell = signal?.includes("Sell");
   
   if (!isBuy && !isSell) return null;
 

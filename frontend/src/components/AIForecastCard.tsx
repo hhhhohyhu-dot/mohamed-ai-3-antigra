@@ -17,11 +17,11 @@ export const AIForecastCard: React.FC<AIForecastProps> = ({ forecast }) => {
     let bg = "bg-slate-800/50 border-slate-700/50";
     let Icon = Minus;
 
-    if (data.trend.toLowerCase() === "bullish") {
+    if (data?.trend?.toLowerCase() === "bullish") {
       color = "text-emerald-400";
       bg = "bg-emerald-500/10 border-emerald-500/20";
       Icon = TrendingUp;
-    } else if (data.trend.toLowerCase() === "bearish") {
+    } else if (data?.trend?.toLowerCase() === "bearish") {
       color = "text-rose-400";
       bg = "bg-rose-500/10 border-rose-500/20";
       Icon = TrendingDown;
