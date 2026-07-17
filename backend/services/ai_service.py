@@ -1,5 +1,6 @@
 import os
 import json
+import re
 from openai import OpenAI
 from dotenv import load_dotenv
 
@@ -12,8 +13,8 @@ if api_key:
         api_key=api_key,
         base_url="https://openrouter.ai/api/v1"
     )
-    # Using Llama 3 8B free via OpenRouter
-    model = "meta-llama/llama-3-8b-instruct:free"
+    # Using a currently available free model on OpenRouter
+    model = "meta-llama/llama-3.3-70b-instruct:free"
 else:
     client = None
     model = None
@@ -52,6 +53,10 @@ def analyze_sentiment(news_items: list) -> dict:
             response_format={"type": "json_object"}
         )
         text = response.choices[0].message.content.strip()
+        # Clean markdown wrappers if present
+        text = re.sub(r'^```json\s*', '', text)
+        text = re.sub(r'^```\s*', '', text)
+        text = re.sub(r'\s*```$', '', text)
         return json.loads(text)
     except Exception as e:
         return {"score": 50, "summary": f"Error analyzing sentiment: {str(e)}", "label": "Neutral"}
@@ -105,6 +110,10 @@ def generate_trading_plan(symbol: str, indicators: dict) -> dict:
             response_format={"type": "json_object"}
         )
         text = response.choices[0].message.content.strip()
+        # Clean markdown wrappers if present
+        text = re.sub(r'^```json\s*', '', text)
+        text = re.sub(r'^```\s*', '', text)
+        text = re.sub(r'\s*```$', '', text)
         return json.loads(text)
     except Exception as e:
         return {
