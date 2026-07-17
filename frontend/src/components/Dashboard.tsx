@@ -7,6 +7,8 @@ import { Portfolio } from './Portfolio';
 import { Alerts } from './Alerts';
 import { MarketScanner } from './MarketScanner';
 import { AITradingSignal } from './AITradingSignal';
+import { TradingPlanCard } from './TradingPlanCard';
+import { AIForecastCard } from './AIForecastCard';
 import { fetchChart, fetchDashboard, fetchIndicators, fetchNews, fetchSentiment, fetchAnalyze } from '../services/api';
 import { Activity, TrendingUp, TrendingDown, MessageSquare, Newspaper, Target, LayoutDashboard, List, Briefcase, Bell } from 'lucide-react';
 import { motion } from 'framer-motion';
@@ -208,63 +210,26 @@ export const Dashboard = () => {
               {/* Right Column: AI Analysis, Chat, News */}
               <div className="space-y-6">
                 
-                {/* AI Trading Plan */}
-                {analysis && (
-                  <motion.div 
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.2 }}
-                    className="bg-slate-900 rounded-2xl border border-slate-800 p-6 shadow-xl relative overflow-hidden"
-                  >
-                    <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-500 to-purple-500"></div>
-                    <h3 className="text-xl font-bold mb-4 flex items-center">
-                      <Target className="mr-2 text-blue-400" /> AI Trading Plan
+                {/* Error State for AI */}
+                {analysis && analysis.signal === 'Error' && (
+                  <div className="bg-slate-900 rounded-2xl border border-rose-500/50 p-6 shadow-xl relative overflow-hidden">
+                    <div className="absolute top-0 left-0 w-full h-1 bg-rose-500"></div>
+                    <h3 className="text-xl font-bold mb-2 flex items-center text-rose-400">
+                      <Target className="mr-2" /> AI Analysis Unavailable
                     </h3>
-                    
-                    <div className="mb-6 flex justify-between items-center p-4 bg-slate-800/80 rounded-xl border border-slate-700/50">
-                      <span className="text-slate-300">Action</span>
-                      <span className={`px-4 py-1 rounded-full text-sm font-bold uppercase tracking-wider ${
-                        analysis.signal === 'Buy' ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 
-                        analysis.signal === 'Sell' ? 'bg-rose-500/20 text-rose-400 border border-rose-500/30' : 
-                        'bg-slate-500/20 text-slate-300 border border-slate-500/30'
-                      }`}>
-                        {analysis.signal}
-                      </span>
-                    </div>
+                    <p className="text-slate-400 text-sm">{analysis.explanation}</p>
+                    <p className="text-slate-500 text-xs mt-2">Displaying technical indicators normally.</p>
+                  </div>
+                )}
 
-                    <p className="text-slate-300 text-sm leading-relaxed mb-6 italic">
-                      "{analysis.explanation}"
-                    </p>
+                {/* AI Forecast Card */}
+                {analysis && analysis.forecast && analysis.signal !== 'Error' && (
+                  <AIForecastCard forecast={analysis.forecast} />
+                )}
 
-                    {analysis.plan && (
-                      <div className="space-y-3">
-                        <div className="flex justify-between p-2 rounded bg-slate-800/30">
-                          <span className="text-slate-400">Entry</span>
-                          <span className="font-medium">${analysis.plan.entry}</span>
-                        </div>
-                        <div className="flex justify-between p-2 rounded bg-slate-800/30">
-                          <span className="text-slate-400">Stop Loss</span>
-                          <span className="font-medium text-rose-400">${analysis.plan.sl}</span>
-                        </div>
-                        <div className="flex justify-between p-2 rounded bg-slate-800/30">
-                          <span className="text-slate-400">Take Profit 1</span>
-                          <span className="font-medium text-emerald-400">${analysis.plan.tp1}</span>
-                        </div>
-                        <div className="flex justify-between p-2 rounded bg-slate-800/30">
-                          <span className="text-slate-400">Take Profit 2</span>
-                          <span className="font-medium text-emerald-400">${analysis.plan.tp2}</span>
-                        </div>
-                        <div className="flex justify-between p-2 rounded bg-slate-800/30">
-                          <span className="text-slate-400">Take Profit 3</span>
-                          <span className="font-medium text-emerald-400">${analysis.plan.tp3}</span>
-                        </div>
-                        <div className="flex justify-between p-2 rounded bg-slate-800/30">
-                          <span className="text-slate-400">Risk/Reward</span>
-                          <span className="font-medium text-blue-400">{analysis.plan.risk_reward}</span>
-                        </div>
-                      </div>
-                    )}
-                  </motion.div>
+                {/* Trading Plan Card */}
+                {analysis && analysis.plan && analysis.signal !== 'Error' && (
+                  <TradingPlanCard plan={analysis.plan} signal={analysis.signal} />
                 )}
 
                 {/* AI Chat component */}
@@ -309,12 +274,29 @@ export const Dashboard = () => {
                     <Newspaper className="mr-2 text-slate-400" size={16} /> Latest News
                   </h4>
                   <div className="space-y-4 max-h-60 overflow-y-auto pr-2">
-                    {news && news.slice(0, 5).map((item: any, i: number) => (
-                      <a key={i} href={item.link} target="_blank" rel="noreferrer" className="block p-3 rounded-lg bg-slate-800/50 hover:bg-slate-800 transition-colors">
-                        <p className="text-sm font-medium line-clamp-2">{item.title}</p>
-                        <p className="text-xs text-slate-500 mt-2">{new Date(item.providerPublishTime * 1000).toLocaleString()}</p>
+                    {!news && loading && (
+                      <p className="text-slate-500 text-sm">Loading latest news...</p>
+                    )}
+                    {(!news || news.length === 0) && !loading && (
+                      <p className="text-slate-500 text-sm">No recent news available.</p>
+                    )}
+                    {news && news.length > 0 && news.slice(0, 5).map((item: any, i: number) => {
+                      // Date Validation
+                      let dateStr = "Recent";
+                      if (item.providerPublishTime) {
+                         const d = new Date(item.providerPublishTime * 1000);
+                         if (!isNaN(d.getTime())) dateStr = d.toLocaleString();
+                      } else if (item.datetime) {
+                         const d = new Date(item.datetime);
+                         if (!isNaN(d.getTime())) dateStr = d.toLocaleString();
+                      }
+                      
+                      return (
+                      <a key={i} href={item.link || '#'} target="_blank" rel="noreferrer" className="block p-3 rounded-lg bg-slate-800/50 hover:bg-slate-800 transition-colors border border-transparent hover:border-slate-700">
+                        <p className="text-sm font-medium line-clamp-2 text-slate-200">{item.title}</p>
+                        <p className="text-xs text-slate-500 mt-2">{dateStr}</p>
                       </a>
-                    ))}
+                    )})}
                   </div>
                 </motion.div>
 

@@ -133,13 +133,17 @@ def generate_trading_plan(symbol: str, indicators: dict) -> dict:
     Respond ONLY with a valid JSON object (no markdown, no extra text) with:
     - signal: "Buy", "Sell", or "Hold"
     - explanation: A detailed 2-4 sentence explanation based on the indicators, explicitly mentioning Market Structure, Volume, Candlestick Patterns, and MTF trend if relevant.
-    - plan: An object with (if signal is Buy or Sell):
+    - plan: An object with (if signal is Buy or Sell, else null):
         - entry: suggested entry price
         - sl: Use the exact value from 'ATR_SL_Long' (if Buy) or 'ATR_SL_Short' (if Sell), or adapt slightly around it.
         - tp1: take profit 1
         - tp2: take profit 2
         - tp3: take profit 3
         - risk_reward: risk/reward ratio as a string (e.g., "1:2")
+    - forecast: An object containing:
+        - tomorrow: object with `trend` ("Bullish", "Bearish", "Neutral") and `confidence` (0-100)
+        - week: object with `trend` ("Bullish", "Bearish", "Neutral") and `confidence` (0-100)
+        - month: object with `trend` ("Bullish", "Bearish", "Neutral") and `confidence` (0-100)
     """}
     ]
 

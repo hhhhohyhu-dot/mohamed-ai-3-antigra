@@ -10,8 +10,6 @@ def calculate_indicators(df: pd.DataFrame) -> dict:
         pass
 
     # Ensure index is datetime or just run on columns
-    # pandas_ta requires 'high', 'low', 'close', 'volume' columns
-
     df_calc = df.copy()
     
     # EMAs
@@ -53,8 +51,11 @@ def calculate_indicators(df: pd.DataFrame) -> dict:
         df_calc['BB_mid'] = bbands.iloc[:, 1]
         df_calc['BB_upper'] = bbands.iloc[:, 2]
 
-    # CCI
-    df_calc['CCI'] = ta.cci(df_calc['high'], df_calc['low'], df_calc['close'], length=14)
+    # Custom Robust CCI Calculation
+    tp = (df_calc['high'] + df_calc['low'] + df_calc['close']) / 3
+    sma_tp = tp.rolling(window=20).mean()
+    mad = tp.rolling(window=20).apply(lambda x: pd.Series(x).sub(pd.Series(x).mean()).abs().mean(), raw=False)
+    df_calc['CCI'] = (tp - sma_tp) / (0.015 * mad)
 
     # OBV
     df_calc['OBV'] = ta.obv(df_calc['close'], df_calc['volume'])
@@ -79,32 +80,63 @@ def calculate_indicators(df: pd.DataFrame) -> dict:
 
     # --- ADVANCED CONCEPTS ---
 
-    # Volume Confirmation
+    # Volume Confirmation & Advanced Metrics
     df_calc['Volume_SMA20'] = df_calc['volume'].rolling(window=20).mean()
     df_calc['Volume_Surge'] = df_calc['volume'] > (df_calc['Volume_SMA20'] * 1.5)
+    df_calc['RVOL'] = df_calc['volume'] / df_calc['Volume_SMA20']
+    
+    is_bull = df_calc['close'] >= df_calc['open']
+    is_bear = df_calc['close'] < df_calc['open']
+    df_calc['Buying_Volume'] = df_calc['volume'].where(is_bull, 0)
+    df_calc['Selling_Volume'] = df_calc['volume'].where(is_bear, 0)
+    
+    vol_sma_current = df_calc['Volume_SMA20']
+    vol_sma_prev = df_calc['Volume_SMA20'].shift(5)
+    
+    def vol_trend(row):
+        if pd.isna(row['curr']) or pd.isna(row['prev']): return "Neutral"
+        if row['curr'] > row['prev'] * 1.1: return "Increasing"
+        if row['curr'] < row['prev'] * 0.9: return "Decreasing"
+        return "Stable"
+        
+    df_calc['Volume_Trend'] = pd.DataFrame({'curr': vol_sma_current, 'prev': vol_sma_prev}).apply(vol_trend, axis=1)
 
-    # Candlestick Patterns (Custom basic logic since TA-Lib is not installed)
-    # Basic Doji: Body is very small compared to the whole candle
+    # Advanced Candlestick Patterns
     body = abs(df_calc['close'] - df_calc['open'])
     hl_range = df_calc['high'] - df_calc['low']
-    df_calc['Pattern_Doji'] = body < (hl_range * 0.1)
     
-    # Basic Engulfing: 
-    # Bullish: Previous body is bearish, current body is bullish and engulfs previous body
+    is_doji = body <= (hl_range * 0.1)
+    
+    lower_wick = df_calc[['open', 'close']].min(axis=1) - df_calc['low']
+    upper_wick = df_calc['high'] - df_calc[['open', 'close']].max(axis=1)
+    is_hammer = (lower_wick > (2 * body)) & (upper_wick < (0.1 * hl_range)) & (body > 0)
+    is_shooting_star = (upper_wick > (2 * body)) & (lower_wick < (0.1 * hl_range)) & (body > 0)
+    
     prev_open = df_calc['open'].shift(1)
     prev_close = df_calc['close'].shift(1)
     
-    bullish_engulfing = (prev_close < prev_open) & (df_calc['close'] > df_calc['open']) & (df_calc['close'] > prev_open) & (df_calc['open'] < prev_close)
-    bearish_engulfing = (prev_close > prev_open) & (df_calc['close'] < df_calc['open']) & (df_calc['close'] < prev_open) & (df_calc['open'] > prev_close)
+    is_bullish_engulfing = (prev_close < prev_open) & (df_calc['close'] > df_calc['open']) & (df_calc['close'] > prev_open) & (df_calc['open'] < prev_close)
+    is_bearish_engulfing = (prev_close > prev_open) & (df_calc['close'] < df_calc['open']) & (df_calc['close'] < prev_open) & (df_calc['open'] > prev_close)
     
-    df_calc['Pattern_Engulfing'] = 0
-    df_calc.loc[bullish_engulfing, 'Pattern_Engulfing'] = 100
-    df_calc.loc[bearish_engulfing, 'Pattern_Engulfing'] = -100
+    prev2_open = df_calc['open'].shift(2)
+    prev2_close = df_calc['close'].shift(2)
+    prev_is_doji = is_doji.shift(1)
+    
+    is_morning_star = (prev2_close < prev2_open) & prev_is_doji & (df_calc['close'] > df_calc['open']) & (df_calc['close'] > prev2_close)
+    is_evening_star = (prev2_close > prev2_open) & prev_is_doji & (df_calc['close'] < df_calc['open']) & (df_calc['close'] < prev2_close)
 
-    # Basic Hammer: Long lower wick, small body, short upper wick
-    lower_wick = df_calc[['open', 'close']].min(axis=1) - df_calc['low']
-    upper_wick = df_calc['high'] - df_calc[['open', 'close']].max(axis=1)
-    df_calc['Pattern_Hammer'] = (lower_wick > (2 * body)) & (upper_wick < (0.1 * hl_range)) & (body > 0)
+    patterns = []
+    for i in range(len(df_calc)):
+        if is_morning_star.iloc[i]: patterns.append({"name": "Morning Star", "strength": 90, "description": "Strong 3-candle bullish reversal."})
+        elif is_evening_star.iloc[i]: patterns.append({"name": "Evening Star", "strength": 90, "description": "Strong 3-candle bearish reversal."})
+        elif is_bullish_engulfing.iloc[i]: patterns.append({"name": "Bullish Engulfing", "strength": 85, "description": "Strong bullish momentum absorbing prior selling."})
+        elif is_bearish_engulfing.iloc[i]: patterns.append({"name": "Bearish Engulfing", "strength": 85, "description": "Strong bearish momentum absorbing prior buying."})
+        elif is_hammer.iloc[i]: patterns.append({"name": "Hammer", "strength": 75, "description": "Bullish rejection of lower prices."})
+        elif is_shooting_star.iloc[i]: patterns.append({"name": "Shooting Star", "strength": 75, "description": "Bearish rejection of higher prices."})
+        elif is_doji.iloc[i]: patterns.append({"name": "Doji", "strength": 50, "description": "Market indecision."})
+        else: patterns.append({"name": "None", "strength": 0, "description": "No significant pattern."})
+        
+    df_calc['Candlestick_Pattern'] = patterns
 
     # ATR-based Stop Loss
     if 'ATR' in df_calc.columns:
@@ -142,13 +174,6 @@ def calculate_indicators(df: pd.DataFrame) -> dict:
     # Get the latest values
     latest = df_calc.iloc[-1]
 
-    # Candlestick readable format
-    current_pattern = "None"
-    if latest.get('Pattern_Engulfing') == 100: current_pattern = "Bullish Engulfing"
-    elif latest.get('Pattern_Engulfing') == -100: current_pattern = "Bearish Engulfing"
-    elif latest.get('Pattern_Hammer'): current_pattern = "Hammer"
-    elif latest.get('Pattern_Doji'): current_pattern = "Doji"
-
     indicators_dict = {
         'EMA20': latest.get('EMA20'),
         'EMA50': latest.get('EMA50'),
@@ -173,9 +198,15 @@ def calculate_indicators(df: pd.DataFrame) -> dict:
         'S1': latest.get('S1'),
         'Volatility': latest.get('Volatility'),
         'Trend_Strength': latest.get('Trend_Strength'),
-        # New Additions
+        # Volume
         'Volume_Surge': bool(latest.get('Volume_Surge')),
-        'Candlestick_Pattern': current_pattern,
+        'RVOL': latest.get('RVOL'),
+        'Buying_Volume': latest.get('Buying_Volume'),
+        'Selling_Volume': latest.get('Selling_Volume'),
+        'Volume_Trend': latest.get('Volume_Trend'),
+        # Candlestick
+        'Candlestick_Pattern': latest.get('Candlestick_Pattern'),
+        # Trade Setup
         'ATR_SL_Long': latest.get('ATR_SL_Long'),
         'ATR_SL_Short': latest.get('ATR_SL_Short'),
         'Market_Structure': latest.get('Market_Structure'),
@@ -184,7 +215,7 @@ def calculate_indicators(df: pd.DataFrame) -> dict:
 
     # Replace NaNs with None for JSON serialization
     for k, v in indicators_dict.items():
-        if isinstance(v, str) or isinstance(v, bool):
+        if isinstance(v, str) or isinstance(v, bool) or isinstance(v, dict):
             continue
         try:
             if pd.isna(v):
@@ -195,4 +226,3 @@ def calculate_indicators(df: pd.DataFrame) -> dict:
             pass
 
     return indicators_dict
-
