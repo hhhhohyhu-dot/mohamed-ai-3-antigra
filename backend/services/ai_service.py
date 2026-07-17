@@ -5,15 +5,15 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-# Initialize Groq client using the OpenAI SDK
-api_key = os.getenv("GROQ_API_KEY", "")
+# Initialize OpenRouter client using the OpenAI SDK
+api_key = os.getenv("OPENROUTER_API_KEY", "")
 if api_key:
     client = OpenAI(
         api_key=api_key,
-        base_url="https://api.groq.com/openai/v1"
+        base_url="https://openrouter.ai/api/v1"
     )
-    # Using Llama 3 70B via Groq for excellent reasoning and JSON support
-    model = "llama3-70b-8192"
+    # Using Llama 3 8B free via OpenRouter
+    model = "meta-llama/llama-3-8b-instruct:free"
 else:
     client = None
     model = None
