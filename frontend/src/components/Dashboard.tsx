@@ -9,8 +9,10 @@ import { MarketScanner } from './MarketScanner';
 import { AITradingSignal } from './AITradingSignal';
 import { TradingPlanCard } from './TradingPlanCard';
 import { AIForecastCard } from './AIForecastCard';
+import { MacroDashboard } from './MacroDashboard';
+import { OptionsFrameworkCard } from './OptionsFrameworkCard';
 import { fetchChart, fetchDashboard, fetchIndicators, fetchNews, fetchSentiment, fetchAnalyze } from '../services/api';
-import { Activity, TrendingUp, TrendingDown, MessageSquare, Newspaper, Target, LayoutDashboard, List, Briefcase, Bell } from 'lucide-react';
+import { Activity, TrendingUp, TrendingDown, MessageSquare, Newspaper, Target, LayoutDashboard, List, Briefcase, Bell, Globe } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 export const Dashboard = () => {
@@ -99,6 +101,7 @@ export const Dashboard = () => {
           <div className="flex space-x-2 overflow-x-auto pb-2">
             {[
               { id: 'dashboard', icon: <LayoutDashboard size={18} className="mr-2"/>, label: 'Dashboard' },
+              { id: 'macro', icon: <Globe size={18} className="mr-2"/>, label: 'Macro Agent' },
               { id: 'scanner', icon: <Activity size={18} className="mr-2"/>, label: 'Market Scanner' },
               { id: 'watchlist', icon: <List size={18} className="mr-2"/>, label: 'Watchlist' },
               { id: 'portfolio', icon: <Briefcase size={18} className="mr-2"/>, label: 'Portfolio' },
@@ -115,6 +118,7 @@ export const Dashboard = () => {
           </div>
         </div>
 
+        {activeTab === 'macro' && <MacroDashboard />}
         {activeTab === 'scanner' && <MarketScanner onSelectSymbol={handleSelectSymbol} />}
         {activeTab === 'watchlist' && <Watchlist onSelectSymbol={handleSelectSymbol} />}
         {activeTab === 'portfolio' && <Portfolio currentSymbol={symbol} currentPrice={dashboardData?.price || 0} />}
@@ -204,6 +208,13 @@ export const Dashboard = () => {
                       <div className="p-3 bg-slate-800/50 rounded-xl col-span-2 md:col-span-2"><p className="text-slate-400 text-xs">Multi-Timeframe (Weekly)</p><p className={`font-semibold ${indicators.MTF_Trend_Weekly === 'Bullish' ? 'text-emerald-400' : indicators.MTF_Trend_Weekly === 'Bearish' ? 'text-rose-400' : 'text-slate-300'}`}>{indicators.MTF_Trend_Weekly || 'Unknown'}</p></div>
                     </div>
                   </motion.div>
+                )}
+
+                {/* Options Framework Section */}
+                {dashboardData && !dashboardData.symbol.includes('=X') && !dashboardData.symbol.includes('-USD') && (
+                  <div className="mt-6">
+                    <OptionsFrameworkCard symbol={dashboardData.symbol} />
+                  </div>
                 )}
               </div>
 

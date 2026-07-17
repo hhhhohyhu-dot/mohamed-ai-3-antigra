@@ -6,7 +6,7 @@ import math
 import json
 from dotenv import load_dotenv
 load_dotenv()
-from api import dashboard, chart, analyze, news, indicators, sentiment, chat
+from api import dashboard, chart, analyze, news, indicators, sentiment, chat, macro, options
 
 
 class SafeJSONResponse(JSONResponse):
@@ -50,6 +50,8 @@ app.include_router(news.router, prefix="/api/news", tags=["News"])
 app.include_router(indicators.router, prefix="/api/indicators", tags=["Indicators"])
 app.include_router(sentiment.router, prefix="/api/sentiment", tags=["Sentiment"])
 app.include_router(chat.router, prefix="/api/chat", tags=["Chat"])
+app.include_router(macro.router, prefix="/api/macro", tags=["Macro"])
+app.include_router(options.router, prefix="/api/options", tags=["Options"])
 
 if __name__ == "__main__":
     uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)

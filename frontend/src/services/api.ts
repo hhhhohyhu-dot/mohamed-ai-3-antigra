@@ -25,6 +25,16 @@ export const fetchSentiment = async (symbol: string) => {
   return res.json();
 };
 
+export const fetchMacro = async () => {
+  const res = await fetch(`${API_URL}/macro/`);
+  return res.json();
+};
+
+export const fetchOptions = async (symbol: string) => {
+  const res = await fetch(`${API_URL}/options/${symbol}`);
+  return res.json();
+};
+
 export const fetchAnalyze = async (symbol: string, indicators: any) => {
   const res = await fetch(`${API_URL}/analyze/`, {
     method: 'POST',

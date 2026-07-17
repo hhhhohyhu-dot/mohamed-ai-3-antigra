@@ -9,6 +9,12 @@ CRYPTO_SYMBOLS = {
     "OP", "INJ", "SUI", "SEI", "PEPE", "SHIB", "FLOKI",
 }
 
+# Standard Forex pairs
+FOREX_PAIRS = {
+    "EURUSD", "USDJPY", "GBPUSD", "USDCAD", "USDCHF", "AUDUSD", "NZDUSD",
+    "EURGBP", "EURJPY", "GBPJPY", "AUDJPY", "EURAUD", "EURCAD", "AUDCAD"
+}
+
 def normalize_symbol(symbol: str) -> str:
     """
     Normalizes a trading symbol for yfinance.
@@ -22,6 +28,9 @@ def normalize_symbol(symbol: str) -> str:
     # If it's a known crypto, append -USD
     if symbol in CRYPTO_SYMBOLS:
         return f"{symbol}-USD"
+    # If it's a known forex pair or exactly 6 letters (standard forex format), append =X
+    if symbol in FOREX_PAIRS or (len(symbol) == 6 and symbol.isalpha() and not symbol.endswith('X')):
+        return f"{symbol}=X"
     return symbol
 
 def get_historical_data(symbol: str, period: str = "1mo", interval: str = "1d") -> pd.DataFrame:
