@@ -1,6 +1,7 @@
 import os
 import json
 import re
+import time
 from openai import OpenAI
 from dotenv import load_dotenv
 
@@ -13,26 +14,75 @@ if api_key:
         api_key=api_key,
         base_url="https://openrouter.ai/api/v1"
     )
-    # Using a currently available free model on OpenRouter
-    model = "meta-llama/llama-3.3-70b-instruct:free"
+    # Free models to try in order (fallback chain)
+    MODELS = [
+        "meta-llama/llama-4-scout:free",
+        "meta-llama/llama-3.3-70b-instruct:free",
+    ]
 else:
     client = None
-    model = None
+    MODELS = []
+
+
+def _clean_json(text: str) -> str:
+    """Remove markdown code block wrappers from AI response."""
+    text = text.strip()
+    text = re.sub(r'^```json\s*', '', text)
+    text = re.sub(r'^```\s*', '', text)
+    text = re.sub(r'\s*```$', '', text)
+    return text.strip()
+
+
+def _call_ai(messages: list, use_json: bool = True, max_retries: int = 3) -> str:
+    """
+    Call OpenRouter API with automatic retry and model fallback.
+    Retries on rate limit (429) errors with increasing delays.
+    """
+    if not client:
+        raise Exception("OpenRouter API key not configured.")
+
+    for model in MODELS:
+        for attempt in range(max_retries):
+            try:
+                kwargs = {
+                    "model": model,
+                    "messages": messages,
+                }
+                if use_json:
+                    kwargs["response_format"] = {"type": "json_object"}
+
+                response = client.chat.completions.create(**kwargs)
+                return response.choices[0].message.content.strip()
+            except Exception as e:
+                error_str = str(e)
+                # If rate limited, wait and retry
+                if "429" in error_str or "rate" in error_str.lower():
+                    wait_time = (attempt + 1) * 3  # 3s, 6s, 9s
+                    time.sleep(wait_time)
+                    continue
+                # If model not found, try next model
+                elif "404" in error_str:
+                    break
+                else:
+                    raise e
+    raise Exception("All AI models are currently busy. Please try again in a moment.")
 
 
 def analyze_sentiment(news_items: list) -> dict:
     """
-    Analyzes sentiment based on recent news using Groq (Llama 3).
+    Analyzes sentiment based on recent news using OpenRouter.
     """
     if not client:
-        return {"score": 50, "summary": "Groq API key not configured.", "label": "Neutral"}
+        return {"score": 50, "summary": "OpenRouter API key not configured.", "label": "Neutral"}
 
     if not news_items:
         return {"score": 50, "summary": "No recent news available.", "label": "Neutral"}
 
     news_text = "\n".join([f"- {item.get('title', '')}" for item in news_items[:5]])
 
-    prompt = f"""
+    messages = [
+        {"role": "system", "content": "You are a helpful financial sentiment analyzer. Output only valid JSON."},
+        {"role": "user", "content": f"""
     Analyze the sentiment of the following recent news headlines for a financial asset.
     Respond ONLY with a valid JSON object (no markdown, no extra text) with these fields:
     - score: integer 0 to 100 (0=very bearish, 100=very bullish)
@@ -41,22 +91,12 @@ def analyze_sentiment(news_items: list) -> dict:
 
     News:
     {news_text}
-    """
+    """}
+    ]
 
     try:
-        response = client.chat.completions.create(
-            model=model,
-            messages=[
-                {"role": "system", "content": "You are a helpful financial sentiment analyzer. Output only valid JSON."},
-                {"role": "user", "content": prompt}
-            ],
-            response_format={"type": "json_object"}
-        )
-        text = response.choices[0].message.content.strip()
-        # Clean markdown wrappers if present
-        text = re.sub(r'^```json\s*', '', text)
-        text = re.sub(r'^```\s*', '', text)
-        text = re.sub(r'\s*```$', '', text)
+        text = _call_ai(messages, use_json=True)
+        text = _clean_json(text)
         return json.loads(text)
     except Exception as e:
         return {"score": 50, "summary": f"Error analyzing sentiment: {str(e)}", "label": "Neutral"}
@@ -64,16 +104,18 @@ def analyze_sentiment(news_items: list) -> dict:
 
 def generate_trading_plan(symbol: str, indicators: dict) -> dict:
     """
-    Generates AI Buy/Sell/Hold signals and a Trading Plan using Groq (Llama 3).
+    Generates AI Buy/Sell/Hold signals and a Trading Plan using OpenRouter.
     """
     if not client:
         return {
             "signal": "Hold",
-            "explanation": "Groq API key not configured.",
+            "explanation": "OpenRouter API key not configured.",
             "plan": None
         }
 
-    prompt = f"""
+    messages = [
+        {"role": "system", "content": "You are a professional AI trading assistant. Output only valid JSON."},
+        {"role": "user", "content": f"""
     You are a professional AI trading assistant for {symbol}.
     Based on the following live technical indicators, generate a professional trading analysis.
     Do NOT use fake data, base your decision purely on the provided indicators.
@@ -98,22 +140,12 @@ def generate_trading_plan(symbol: str, indicators: dict) -> dict:
         - tp2: take profit 2
         - tp3: take profit 3
         - risk_reward: risk/reward ratio as a string (e.g., "1:2")
-    """
+    """}
+    ]
 
     try:
-        response = client.chat.completions.create(
-            model=model,
-            messages=[
-                {"role": "system", "content": "You are a professional AI trading assistant. Output only valid JSON."},
-                {"role": "user", "content": prompt}
-            ],
-            response_format={"type": "json_object"}
-        )
-        text = response.choices[0].message.content.strip()
-        # Clean markdown wrappers if present
-        text = re.sub(r'^```json\s*', '', text)
-        text = re.sub(r'^```\s*', '', text)
-        text = re.sub(r'\s*```$', '', text)
+        text = _call_ai(messages, use_json=True)
+        text = _clean_json(text)
         return json.loads(text)
     except Exception as e:
         return {
@@ -125,12 +157,14 @@ def generate_trading_plan(symbol: str, indicators: dict) -> dict:
 
 def chat_with_ai(symbol: str, message: str, context: dict) -> dict:
     """
-    Handles user chat inquiries with context of the current symbol using Groq (Llama 3).
+    Handles user chat inquiries with context of the current symbol using OpenRouter.
     """
     if not client:
-        return {"response": "Groq API key not configured. Cannot chat."}
+        return {"response": "OpenRouter API key not configured. Cannot chat."}
 
-    prompt = f"""
+    messages = [
+        {"role": "system", "content": "You are a professional AI trading assistant."},
+        {"role": "user", "content": f"""
     You are a professional AI trading assistant for {symbol}.
     The user is asking a question about {symbol} or trading in general.
     You have the following live technical context (current price, indicators):
@@ -139,16 +173,11 @@ def chat_with_ai(symbol: str, message: str, context: dict) -> dict:
     User Message: {message}
 
     Respond professionally and concisely.
-    """
+    """}
+    ]
 
     try:
-        response = client.chat.completions.create(
-            model=model,
-            messages=[
-                {"role": "system", "content": "You are a professional AI trading assistant."},
-                {"role": "user", "content": prompt}
-            ]
-        )
-        return {"response": response.choices[0].message.content.strip()}
+        text = _call_ai(messages, use_json=False)
+        return {"response": text}
     except Exception as e:
         return {"response": f"Chat failed: {str(e)}"}
