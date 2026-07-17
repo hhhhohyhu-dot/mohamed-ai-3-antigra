@@ -52,8 +52,6 @@ export const Dashboard = () => {
 
   useEffect(() => {
     loadData(symbol);
-    const interval = setInterval(() => loadData(symbol), 60000);
-    return () => clearInterval(interval);
   }, [symbol]);
 
   const handleSelectSymbol = (sym: string) => {
