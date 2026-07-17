@@ -1,4 +1,4 @@
-const API_URL = 'http://localhost:8000/api';
+const API_URL = 'https://mohamed-ai-3-antigra-production.up.railway.app/api';
 
 export const fetchDashboard = async (symbol: string) => {
   const res = await fetch(`${API_URL}/dashboard/${symbol}`);
