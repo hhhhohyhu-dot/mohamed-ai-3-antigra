@@ -118,13 +118,15 @@ export const AITradingSignal: React.FC<AITradingSignalProps> = ({ indicators, cu
   const bullishPatterns = ["Bullish Engulfing", "Hammer", "Morning Star"];
   const bearishPatterns = ["Bearish Engulfing", "Shooting Star", "Evening Star"];
   
-  if (Candlestick_Pattern && bullishPatterns.includes(Candlestick_Pattern)) {
+  const patternName = typeof Candlestick_Pattern === 'object' ? Candlestick_Pattern?.name : Candlestick_Pattern;
+
+  if (patternName && bullishPatterns.includes(patternName)) {
     candleScore = 5;
-    reasons.push(`✓ Bullish Pattern Detected: ${Candlestick_Pattern}`);
-  } else if (Candlestick_Pattern && bearishPatterns.includes(Candlestick_Pattern)) {
+    reasons.push(`✓ Bullish Pattern Detected: ${patternName}`);
+  } else if (patternName && bearishPatterns.includes(patternName)) {
     candleScore = 0;
-    reasons.push(`✗ Bearish Pattern Detected: ${Candlestick_Pattern}`);
-  } else if (Candlestick_Pattern === "Doji") {
+    reasons.push(`✗ Bearish Pattern Detected: ${patternName}`);
+  } else if (patternName === "Doji") {
     candleScore = 2.5;
     reasons.push("○ Market Indecision: Doji Pattern");
   } else {
