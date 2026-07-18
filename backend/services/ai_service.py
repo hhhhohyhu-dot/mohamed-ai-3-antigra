@@ -16,8 +16,12 @@ if api_key:
     )
     # Free models to try in order (fallback chain)
     MODELS = [
+        "google/gemini-2.5-flash-free",
+        "google/gemini-2.5-pro-free",
         "meta-llama/llama-4-scout:free",
         "meta-llama/llama-3.3-70b-instruct:free",
+        "qwen/qwen-2.5-72b-instruct:free",
+        "mistralai/mistral-7b-instruct:free",
     ]
 else:
     client = None
@@ -55,9 +59,9 @@ def _call_ai(messages: list, use_json: bool = True, max_retries: int = 3) -> str
                 return response.choices[0].message.content.strip()
             except Exception as e:
                 error_str = str(e)
-                # If rate limited, wait and retry
-                if "429" in error_str or "rate" in error_str.lower():
-                    wait_time = (attempt + 1) * 3  # 3s, 6s, 9s
+                # If rate limited or server error, wait and retry
+                if any(x in error_str.lower() for x in ["429", "rate", "502", "503", "busy", "timeout", "overloaded", "fetch"]):
+                    wait_time = (attempt + 1) * 2  # 2s, 4s, 6s
                     time.sleep(wait_time)
                     continue
                 # If model not found, try next model
