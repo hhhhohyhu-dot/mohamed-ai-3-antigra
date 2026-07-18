@@ -68,28 +68,33 @@ async def get_current_user(token: str = Depends(oauth2_scheme), db: AsyncSession
 
 @router.post("/register", response_model=Token)
 async def register(user: UserCreate, db: AsyncSession = Depends(get_db)):
-    result = await db.execute(select(models.User).where((models.User.username == user.username) | (models.User.email == user.email)))
-    existing_user = result.scalars().first()
-    if existing_user:
-        raise HTTPException(status_code=400, detail="Username or email already registered")
+    try:
+        result = await db.execute(select(models.User).where((models.User.username == user.username) | (models.User.email == user.email)))
+        existing_user = result.scalars().first()
+        if existing_user:
+            raise HTTPException(status_code=400, detail="Username or email already registered")
+            
+        hashed_password = get_password_hash(user.password)
+        new_user = models.User(username=user.username, email=user.email, hashed_password=hashed_password)
         
-    hashed_password = get_password_hash(user.password)
-    new_user = models.User(username=user.username, email=user.email, hashed_password=hashed_password)
-    
-    db.add(new_user)
-    await db.commit()
-    await db.refresh(new_user)
-    
-    # Give them a starting portfolio
-    portfolio = models.Portfolio(user_id=new_user.id, balance=10000.0, equity=10000.0)
-    db.add(portfolio)
-    await db.commit()
-    
-    access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
-    access_token = create_access_token(
-        data={"sub": new_user.username}, expires_delta=access_token_expires
-    )
-    return {"access_token": access_token, "token_type": "bearer"}
+        db.add(new_user)
+        await db.commit()
+        await db.refresh(new_user)
+        
+        # Give them a starting portfolio
+        portfolio = models.Portfolio(user_id=new_user.id, balance=10000.0, equity=10000.0)
+        db.add(portfolio)
+        await db.commit()
+        
+        access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+        access_token = create_access_token(
+            data={"sub": new_user.username}, expires_delta=access_token_expires
+        )
+        return {"access_token": access_token, "token_type": "bearer"}
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"DB Error: {str(e)}")
 
 @router.post("/token", response_model=Token)
 async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(), db: AsyncSession = Depends(get_db)):
