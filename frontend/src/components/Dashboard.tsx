@@ -217,6 +217,13 @@ export const Dashboard = () => {
                       <div className="p-3 bg-slate-800/50 rounded-xl"><p className="text-slate-400 text-xs">Volume Surge</p><p className="font-semibold">{indicators.Volume_Surge ? 'Yes' : 'No'}</p></div>
                       <div className="p-3 bg-slate-800/50 rounded-xl"><p className="text-slate-400 text-xs">Candlestick Pattern</p><p className="font-semibold text-xs">{typeof indicators.Candlestick_Pattern === 'object' ? indicators.Candlestick_Pattern?.name : indicators.Candlestick_Pattern || 'None'}</p></div>
                       <div className="p-3 bg-slate-800/50 rounded-xl"><p className="text-slate-400 text-xs">PA EMA50 Dist (%)</p><p className="font-semibold">{indicators.PA_EMA50_Dist_Pct?.toFixed(2) || 'N/A'}%</p></div>
+                      
+                      {/* Institutional SMC */}
+                      <div className="p-3 bg-indigo-900/30 rounded-xl"><p className="text-indigo-400 text-xs">Order Blocks</p><p className="font-semibold text-xs">{indicators.Bullish_OB ? 'Bullish OB' : indicators.Bearish_OB ? 'Bearish OB' : 'None'}</p></div>
+                      <div className="p-3 bg-indigo-900/30 rounded-xl"><p className="text-indigo-400 text-xs">Fair Value Gaps</p><p className="font-semibold text-xs">{indicators.Bullish_FVG ? 'Bullish FVG' : indicators.Bearish_FVG ? 'Bearish FVG' : 'None'}</p></div>
+                      <div className="p-3 bg-indigo-900/30 rounded-xl"><p className="text-indigo-400 text-xs">Mitigation/Breaker</p><p className="font-semibold text-xs">{indicators.Breaker_Block ? 'Breaker' : indicators.Mitigation_Block ? 'Mitigation' : 'None'}</p></div>
+                      <div className="p-3 bg-indigo-900/30 rounded-xl"><p className="text-indigo-400 text-xs">Market Session</p><p className="font-semibold text-xs">{indicators.London_Session ? 'London' : indicators.NY_Session ? 'New York' : indicators.Asian_Session ? 'Asian' : 'Unknown'}</p></div>
+
                       <div className="p-3 bg-slate-800/50 rounded-xl col-span-2 md:col-span-2"><p className="text-slate-400 text-xs">ATR Stop Loss (Long/Short)</p><p className="font-semibold text-xs text-blue-400">${indicators.ATR_SL_Long?.toFixed(2) || 'N/A'} / ${indicators.ATR_SL_Short?.toFixed(2) || 'N/A'}</p></div>
                       <div className="p-3 bg-slate-800/50 rounded-xl col-span-2 md:col-span-2"><p className="text-slate-400 text-xs">Multi-Timeframe (Weekly)</p><p className={`font-semibold ${indicators.MTF_Trend_Weekly === 'Bullish' ? 'text-emerald-400' : indicators.MTF_Trend_Weekly === 'Bearish' ? 'text-rose-400' : 'text-slate-300'}`}>{indicators.MTF_Trend_Weekly || 'Unknown'}</p></div>
                     </div>
@@ -246,13 +253,38 @@ export const Dashboard = () => {
                   </div>
                 )}
 
+                {/* Risk Engine Rejection State */}
+                {analysis && analysis.signal === 'NO TRADE' && analysis.strict_evaluation && (
+                  <motion.div 
+                    initial={{ opacity: 0, scale: 0.95 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    className="bg-slate-900 rounded-2xl border border-orange-500/50 p-6 shadow-xl relative overflow-hidden"
+                  >
+                    <div className="absolute top-0 left-0 w-full h-1 bg-orange-500"></div>
+                    <h3 className="text-xl font-bold mb-2 flex items-center text-orange-400">
+                      <Target className="mr-2" /> Trade Rejected by Risk Engine
+                    </h3>
+                    <p className="text-slate-300 text-sm mb-4">{analysis.explanation}</p>
+                    <div className="bg-slate-800/50 p-4 rounded-lg">
+                      <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Rejection Reasons</p>
+                      <ul className="space-y-2">
+                        {analysis.strict_evaluation.reasons_for_rejection.map((r: string, i: number) => (
+                          <li key={i} className="flex items-start text-sm text-rose-300">
+                            <span className="mr-2 mt-0.5 text-rose-500">✗</span> {r}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  </motion.div>
+                )}
+
                 {/* AI Forecast Card */}
-                {analysis && analysis.forecast && analysis.signal !== 'Error' && (
+                {analysis && analysis.forecast && analysis.signal !== 'Error' && analysis.signal !== 'NO TRADE' && (
                   <AIForecastCard forecast={analysis.forecast} />
                 )}
 
                 {/* Trading Plan Card */}
-                {analysis && analysis.plan && analysis.signal !== 'Error' && (
+                {analysis && analysis.plan && analysis.signal !== 'Error' && analysis.signal !== 'NO TRADE' && (
                   <TradingPlanCard 
                     plan={analysis.plan} 
                     signal={analysis.signal} 

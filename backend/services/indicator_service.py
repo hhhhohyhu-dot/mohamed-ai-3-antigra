@@ -183,9 +183,8 @@ def calculate_indicators(df: pd.DataFrame) -> dict:
     df_calc['Fib_0.618'] = highest_50 - (fib_range * 0.618)
     df_calc['Fib_0.786'] = highest_50 - (fib_range * 0.786)
 
-    # 2. Order Blocks (Simplistic Smart Money Concept)
-    # Bearish OB: Last bullish candle before a strong bearish down-move
-    # Bullish OB: Last bearish candle before a strong bullish up-move
+    # 2. Smart Money Concepts (SMC) & ICT
+    # Order Blocks (OB)
     df_calc['Body'] = abs(df_calc['close'] - df_calc['open'])
     df_calc['Avg_Body'] = df_calc['Body'].rolling(window=20).mean()
     is_strong_bullish = (df_calc['close'] > df_calc['open']) & (df_calc['Body'] > (df_calc['Avg_Body'] * 1.5))
@@ -193,18 +192,37 @@ def calculate_indicators(df: pd.DataFrame) -> dict:
     
     bullish_ob_active = (df_calc['close'].shift(1) < df_calc['open'].shift(1)) & is_strong_bullish
     bearish_ob_active = (df_calc['close'].shift(1) > df_calc['open'].shift(1)) & is_strong_bearish
-    
     df_calc['Bullish_OB'] = bullish_ob_active
     df_calc['Bearish_OB'] = bearish_ob_active
 
-    # 3. Liquidity Zones (Double tops / bottoms)
+    # Fair Value Gaps (FVG)
+    df_calc['Bullish_FVG'] = df_calc['low'] > df_calc['high'].shift(2)
+    df_calc['Bearish_FVG'] = df_calc['high'] < df_calc['low'].shift(2)
+    df_calc['FVG_Present'] = df_calc['Bullish_FVG'] | df_calc['Bearish_FVG']
+
+    # Breaker Blocks & Mitigation Blocks (Simplified)
+    # If price sweeps liquidity (HH) then breaks structure (LL), the OB responsible for HH is a Bearish Breaker.
+    df_calc['Breaker_Block'] = (df_calc['HH_20'] > df_calc['Prev_HH_20']) & (df_calc['close'] < df_calc['LL_20'].shift(1))
+    df_calc['Mitigation_Block'] = (df_calc['HH_20'] <= df_calc['Prev_HH_20']) & (df_calc['close'] < df_calc['LL_20'].shift(1))
+
+    # 3. Liquidity Zones (Sweeps)
     df_calc['Liquidity_Top'] = df_calc['high'].rolling(window=20).max() == df_calc['high'].rolling(window=40).max()
     df_calc['Liquidity_Bottom'] = df_calc['low'].rolling(window=20).min() == df_calc['low'].rolling(window=40).min()
 
-    # 4. Risk Metrics (Kelly Criterion & Sizing hint)
-    # Win rate assumption: 55%, Reward/Risk ratio: 1.5 (Standard for veteran setup)
-    # Kelly % = W - [(1 - W) / R] = 0.55 - [0.45 / 1.5] = 0.55 - 0.3 = 25% (Fractional Kelly usually 1/2 or 1/4 of this)
-    df_calc['Suggested_Risk_Pct'] = 2.0 # 2% max risk per trade rule
+    # 4. Market Sessions (London, NY, Asian)
+    # This requires datetime index, assuming UTC time for simplified approach
+    if 'datetime' in df_calc.columns:
+        df_calc['Hour'] = df_calc.index.hour
+        df_calc['London_Session'] = (df_calc['Hour'] >= 8) & (df_calc['Hour'] < 16)
+        df_calc['NY_Session'] = (df_calc['Hour'] >= 13) & (df_calc['Hour'] < 21)
+        df_calc['Asian_Session'] = (df_calc['Hour'] >= 0) & (df_calc['Hour'] < 8)
+    else:
+        df_calc['London_Session'] = False
+        df_calc['NY_Session'] = False
+        df_calc['Asian_Session'] = False
+
+    # 5. Risk Metrics (Kelly Criterion & Sizing hint)
+    df_calc['Suggested_Risk_Pct'] = 1.0 # Strict 1% risk per trade rule
 
 
     # Get the latest values
@@ -253,8 +271,16 @@ def calculate_indicators(df: pd.DataFrame) -> dict:
         'Fib_0_618': latest.get('Fib_0.618'),
         'Bullish_OB': bool(latest.get('Bullish_OB')),
         'Bearish_OB': bool(latest.get('Bearish_OB')),
+        'Bullish_FVG': bool(latest.get('Bullish_FVG')),
+        'Bearish_FVG': bool(latest.get('Bearish_FVG')),
+        'FVG_Present': bool(latest.get('FVG_Present')),
+        'Breaker_Block': bool(latest.get('Breaker_Block')),
+        'Mitigation_Block': bool(latest.get('Mitigation_Block')),
         'Liquidity_Top_Present': bool(latest.get('Liquidity_Top')),
         'Liquidity_Bottom_Present': bool(latest.get('Liquidity_Bottom')),
+        'London_Session': bool(latest.get('London_Session')),
+        'NY_Session': bool(latest.get('NY_Session')),
+        'Asian_Session': bool(latest.get('Asian_Session')),
         'Suggested_Risk_Pct': latest.get('Suggested_Risk_Pct')
     }
 
