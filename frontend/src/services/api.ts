@@ -1,4 +1,41 @@
-const API_URL = 'https://mohamed-ai-3-antigra-production.up.railway.app/api';
+export const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://mohamed-ai-3-antigra-production.up.railway.app/api';
+
+export const getAuthHeaders = (): Record<string, string> => {
+  if (typeof window !== 'undefined') {
+    const token = localStorage.getItem('token');
+    return token ? { 'Authorization': `Bearer ${token}` } : {};
+  }
+  return {};
+};
+
+export const loginUser = async (username: string, password: string) => {
+  const formData = new URLSearchParams();
+  formData.append('username', username);
+  formData.append('password', password);
+  
+  const res = await fetch(`${API_URL}/auth/token`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: formData,
+  });
+  return res.json();
+};
+
+export const registerUser = async (username: string, email: string, password: string) => {
+  const res = await fetch(`${API_URL}/auth/register`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ username, email, password }),
+  });
+  return res.json();
+};
+
+export const fetchMe = async () => {
+  const res = await fetch(`${API_URL}/auth/me`, {
+    headers: getAuthHeaders(),
+  });
+  return res.json();
+};
 
 export const fetchDashboard = async (symbol: string) => {
   const res = await fetch(`${API_URL}/dashboard/${symbol}`);
@@ -63,19 +100,19 @@ export const fetchChat = async (symbol: string, message: string, context: any) =
 };
 
 export const fetchActiveTrades = async () => {
-  const res = await fetch(`${API_URL}/trades/active`);
+  const res = await fetch(`${API_URL}/trades/active`, { headers: getAuthHeaders() });
   return res.json();
 };
 
 export const fetchTradeHistory = async () => {
-  const res = await fetch(`${API_URL}/trades/history`);
+  const res = await fetch(`${API_URL}/trades/history`, { headers: getAuthHeaders() });
   return res.json();
 };
 
 export const executeTrade = async (symbol: string, type: string, volume: number, entry_price: number) => {
   const res = await fetch(`${API_URL}/trades/execute`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
     body: JSON.stringify({ symbol, type, volume, entry_price }),
   });
   return res.json();
@@ -84,6 +121,7 @@ export const executeTrade = async (symbol: string, type: string, volume: number,
 export const closeTrade = async (trade_id: number, exit_price: number) => {
   const res = await fetch(`${API_URL}/trades/close/${trade_id}?exit_price=${exit_price}`, {
     method: 'POST',
+    headers: getAuthHeaders(),
   });
   return res.json();
 };

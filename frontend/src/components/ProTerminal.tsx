@@ -1,18 +1,22 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useContext } from 'react';
 import { TradingChart } from './TradingChart';
-import { fetchChart, fetchAnalyze, fetchIndicators } from '../services/api';
-import { Activity, Clock, FileText, Settings, X, TrendingUp } from 'lucide-react';
+import { fetchChart, fetchAnalyze, fetchIndicators, executeTrade, closeTrade, fetchActiveTrades, fetchTradeHistory, API_URL } from '../services/api';
+import { Activity, Clock, FileText, Settings, X, TrendingUp, LogOut } from 'lucide-react';
+import { AuthContext } from '../context/AuthContext';
 
 interface ProTerminalProps {
   initialSymbol?: string;
 }
 
 export const ProTerminal: React.FC<ProTerminalProps> = ({ initialSymbol = 'AAPL' }) => {
+  const { user, logout } = useContext(AuthContext);
   const [symbol, setSymbol] = useState(initialSymbol);
   const [chartData, setChartData] = useState<any[]>([]);
   const [indicators, setIndicators] = useState<any>(null);
   const [analysis, setAnalysis] = useState<any>(null);
   const [loading, setLoading] = useState(false);
+  const [wsConnected, setWsConnected] = useState(false);
+  const [livePrice, setLivePrice] = useState<number>(0);
   
   // Terminal Bottom Panel State
   const [activeBottomTab, setActiveBottomTab] = useState('trade');
@@ -80,56 +84,105 @@ export const ProTerminal: React.FC<ProTerminalProps> = ({ initialSymbol = 'AAPL'
     }
   };
 
-  const currentPrice = chartData.length > 0 ? chartData[chartData.length - 1].close : 0;
-
-  // Paper Trading Logic
-  const executeTrade = (type: 'BUY' | 'SELL') => {
-    if (!currentPrice) return;
+  useEffect(() => {
+    // Determine the WS URL (ws:// or wss://)
+    const wsProtocol = API_URL.includes('https') ? 'wss' : 'ws';
+    const wsHost = API_URL.replace('http://', '').replace('https://', '').replace('/api', '');
+    const wsUrl = `${wsProtocol}://${wsHost}/ws/stream`;
     
-    const requiredMargin = currentPrice * tradeVolume * 0.1; // Simulated 10% margin
-    if (requiredMargin > balance) {
-      addLog(`Trade rejected: Insufficient margin. Required: $${requiredMargin.toFixed(2)}`, 'error');
-      return;
-    }
+    const ws = new WebSocket(wsUrl);
 
-    const newPosition = {
-      id: Math.random().toString(36).substr(2, 9),
-      time: new Date().toLocaleTimeString(),
-      symbol,
-      type,
-      volume: tradeVolume,
-      entryPrice: currentPrice,
-      sl: 0,
-      tp: 0,
-      pnl: - (currentPrice * 0.0005 * tradeVolume) // Simulated spread/commission
+    ws.onopen = () => {
+      setWsConnected(true);
+      addLog('WebSocket connected for live stream', 'success');
     };
 
-    setPositions([...positions, newPosition]);
-    setBalance(prev => prev - (currentPrice * 0.0005 * tradeVolume)); // Deduct commission
-    addLog(`Order executed: ${type} ${tradeVolume} ${symbol} @ ${currentPrice.toFixed(2)}`, 'success');
+    ws.onmessage = (event) => {
+      try {
+        const message = JSON.parse(event.data);
+        if (message.type === 'tick' && message.data[symbol]) {
+          const { price } = message.data[symbol];
+          setLivePrice(price);
+          
+          setChartData(prev => {
+            if (prev.length === 0) return prev;
+            const newData = [...prev];
+            newData[newData.length - 1].close = price; // update current candle
+            return newData;
+          });
+        }
+      } catch (e) {
+        // ignore parse error
+      }
+    };
+
+    ws.onclose = () => setWsConnected(false);
+
+    return () => ws.close();
+  }, [symbol]);
+
+  const loadBackendTrades = async () => {
+    try {
+      const active = await fetchActiveTrades();
+      const hist = await fetchTradeHistory();
+      
+      // Map backend trades to frontend format
+      const formattedActive = active.map((t: any) => ({
+        id: t.id,
+        time: t.opened_at,
+        symbol: t.symbol,
+        type: t.type,
+        volume: t.volume,
+        entryPrice: t.entry_price,
+        pnl: t.pnl
+      }));
+      setPositions(formattedActive);
+      
+      const formattedHist = hist.map((t: any) => ({
+        id: t.id,
+        closeTime: t.closed_at,
+        symbol: t.symbol,
+        type: t.type,
+        volume: t.volume,
+        entryPrice: t.entry_price,
+        closePrice: t.exit_price,
+        finalPnl: t.pnl
+      }));
+      setHistory(formattedHist);
+      
+    } catch (e) {
+      console.error("Failed to load backend trades", e);
+    }
   };
 
-  const closePosition = (id: string) => {
-    const pos = positions.find(p => p.id === id);
-    if (!pos) return;
-    
-    let finalPnl = pos.pnl;
-    if (pos.symbol === symbol) {
-      if (pos.type === 'BUY') finalPnl += (currentPrice - pos.entryPrice) * pos.volume;
-      if (pos.type === 'SELL') finalPnl += (pos.entryPrice - currentPrice) * pos.volume;
-    }
+  useEffect(() => {
+    loadBackendTrades();
+  }, []);
 
-    setBalance(prev => prev + finalPnl);
-    setPositions(positions.filter(p => p.id !== id));
-    
-    setHistory([{
-      ...pos,
-      closeTime: new Date().toLocaleTimeString(),
-      closePrice: pos.symbol === symbol ? currentPrice : pos.entryPrice,
-      finalPnl
-    }, ...history]);
-    
-    addLog(`Closed position #${id} (${pos.symbol}) for $${finalPnl.toFixed(2)}`, finalPnl >= 0 ? 'success' : 'error');
+  const currentPrice = livePrice || (chartData.length > 0 ? chartData[chartData.length - 1].close : 0);
+
+  const executeTradeAction = async (type: 'BUY' | 'SELL') => {
+    if (!currentPrice) return;
+    try {
+      addLog(`Sending ${type} order to exchange...`, 'info');
+      await executeTrade(symbol, type, tradeVolume, currentPrice);
+      addLog(`Order executed: ${type} ${tradeVolume} ${symbol} @ ${currentPrice.toFixed(2)}`, 'success');
+      loadBackendTrades();
+    } catch (e) {
+      addLog(`Trade rejected: Server error`, 'error');
+    }
+  };
+
+  const closePositionAction = async (id: string, entryPrice: number, type: string) => {
+    if (!currentPrice) return;
+    try {
+      addLog(`Closing position #${id}...`, 'info');
+      await closeTrade(Number(id), currentPrice);
+      addLog(`Closed position #${id} successfully`, 'success');
+      loadBackendTrades();
+    } catch (e) {
+      addLog(`Failed to close position #${id}`, 'error');
+    }
   };
 
   useEffect(() => {
@@ -158,9 +211,17 @@ export const ProTerminal: React.FC<ProTerminalProps> = ({ initialSymbol = 'AAPL'
           <span className="text-slate-500 cursor-pointer hover:text-slate-300">Charts</span>
           <span className="text-slate-500 cursor-pointer hover:text-slate-300">Tools</span>
         </div>
-        <div className="flex items-center space-x-2 text-emerald-500 font-mono">
-          <Activity size={14} className="animate-pulse" />
-          <span>Connected: 34ms</span>
+        <div className="flex items-center space-x-4">
+          <div className="flex items-center space-x-2 text-emerald-500 font-mono">
+            <Activity size={14} className={wsConnected ? 'animate-pulse' : 'text-red-500'} />
+            <span className={!wsConnected ? 'text-red-500' : ''}>{wsConnected ? 'Connected: Live' : 'Disconnected'}</span>
+          </div>
+          <div className="flex items-center space-x-2 text-slate-400 border-l border-slate-700 pl-4">
+            <span className="font-medium text-white">{user?.username}</span>
+            <button onClick={logout} className="hover:text-red-400 transition-colors" title="Log Out">
+              <LogOut size={14} />
+            </button>
+          </div>
         </div>
       </div>
 
@@ -230,14 +291,14 @@ export const ProTerminal: React.FC<ProTerminalProps> = ({ initialSymbol = 'AAPL'
               </div>
               <div className="flex space-x-2">
                 <button 
-                  onClick={() => executeTrade('SELL')}
+                  onClick={() => executeTradeAction('SELL')}
                   className="flex-1 bg-red-600 hover:bg-red-500 text-white py-2 rounded text-xs font-bold transition flex flex-col items-center"
                 >
                   <span>SELL</span>
                   <span className="font-mono mt-0.5 opacity-80">{currentPrice ? (currentPrice * 0.9998).toFixed(2) : '---'}</span>
                 </button>
                 <button 
-                  onClick={() => executeTrade('BUY')}
+                  onClick={() => executeTradeAction('BUY')}
                   className="flex-1 bg-blue-600 hover:bg-blue-500 text-white py-2 rounded text-xs font-bold transition flex flex-col items-center"
                 >
                   <span>BUY</span>
@@ -362,7 +423,7 @@ export const ProTerminal: React.FC<ProTerminalProps> = ({ initialSymbol = 'AAPL'
                         {pnl >= 0 ? '+' : ''}{pnl.toFixed(2)}
                       </td>
                       <td className="py-1 px-4">
-                        <button onClick={() => closePosition(pos.id)} className="text-slate-500 hover:text-red-500"><X size={14}/></button>
+                        <button onClick={() => closePositionAction(pos.id, pos.entryPrice, pos.type)} className="text-slate-500 hover:text-red-500"><X size={14}/></button>
                       </td>
                     </tr>
                   )
