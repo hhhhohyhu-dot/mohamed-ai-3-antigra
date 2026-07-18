@@ -171,6 +171,42 @@ def calculate_indicators(df: pd.DataFrame) -> dict:
         return "None"
     df_calc['Trend_Strength'] = df_calc['ADX'].apply(determine_trend) if 'ADX' in df_calc.columns else "Unknown"
 
+    # --- INSTITUTIONAL / VETERAN CONCEPTS ---
+    
+    # 1. Fibonacci Retracements (based on 50-period High/Low)
+    highest_50 = df_calc['high'].rolling(window=50).max()
+    lowest_50 = df_calc['low'].rolling(window=50).min()
+    fib_range = highest_50 - lowest_50
+    df_calc['Fib_0.236'] = highest_50 - (fib_range * 0.236)
+    df_calc['Fib_0.382'] = highest_50 - (fib_range * 0.382)
+    df_calc['Fib_0.500'] = highest_50 - (fib_range * 0.5)
+    df_calc['Fib_0.618'] = highest_50 - (fib_range * 0.618)
+    df_calc['Fib_0.786'] = highest_50 - (fib_range * 0.786)
+
+    # 2. Order Blocks (Simplistic Smart Money Concept)
+    # Bearish OB: Last bullish candle before a strong bearish down-move
+    # Bullish OB: Last bearish candle before a strong bullish up-move
+    df_calc['Body'] = abs(df_calc['close'] - df_calc['open'])
+    df_calc['Avg_Body'] = df_calc['Body'].rolling(window=20).mean()
+    is_strong_bullish = (df_calc['close'] > df_calc['open']) & (df_calc['Body'] > (df_calc['Avg_Body'] * 1.5))
+    is_strong_bearish = (df_calc['close'] < df_calc['open']) & (df_calc['Body'] > (df_calc['Avg_Body'] * 1.5))
+    
+    bullish_ob_active = (df_calc['close'].shift(1) < df_calc['open'].shift(1)) & is_strong_bullish
+    bearish_ob_active = (df_calc['close'].shift(1) > df_calc['open'].shift(1)) & is_strong_bearish
+    
+    df_calc['Bullish_OB'] = bullish_ob_active
+    df_calc['Bearish_OB'] = bearish_ob_active
+
+    # 3. Liquidity Zones (Double tops / bottoms)
+    df_calc['Liquidity_Top'] = df_calc['high'].rolling(window=20).max() == df_calc['high'].rolling(window=40).max()
+    df_calc['Liquidity_Bottom'] = df_calc['low'].rolling(window=20).min() == df_calc['low'].rolling(window=40).min()
+
+    # 4. Risk Metrics (Kelly Criterion & Sizing hint)
+    # Win rate assumption: 55%, Reward/Risk ratio: 1.5 (Standard for veteran setup)
+    # Kelly % = W - [(1 - W) / R] = 0.55 - [0.45 / 1.5] = 0.55 - 0.3 = 25% (Fractional Kelly usually 1/2 or 1/4 of this)
+    df_calc['Suggested_Risk_Pct'] = 2.0 # 2% max risk per trade rule
+
+
     # Get the latest values
     latest = df_calc.iloc[-1]
 
@@ -210,7 +246,16 @@ def calculate_indicators(df: pd.DataFrame) -> dict:
         'ATR_SL_Long': latest.get('ATR_SL_Long'),
         'ATR_SL_Short': latest.get('ATR_SL_Short'),
         'Market_Structure': latest.get('Market_Structure'),
-        'PA_EMA50_Dist_Pct': latest.get('PA_EMA50_Dist')
+        'PA_EMA50_Dist_Pct': latest.get('PA_EMA50_Dist'),
+        # Institutional
+        'Fib_0_382': latest.get('Fib_0.382'),
+        'Fib_0_500': latest.get('Fib_0.500'),
+        'Fib_0_618': latest.get('Fib_0.618'),
+        'Bullish_OB': bool(latest.get('Bullish_OB')),
+        'Bearish_OB': bool(latest.get('Bearish_OB')),
+        'Liquidity_Top_Present': bool(latest.get('Liquidity_Top')),
+        'Liquidity_Bottom_Present': bool(latest.get('Liquidity_Bottom')),
+        'Suggested_Risk_Pct': latest.get('Suggested_Risk_Pct')
     }
 
     # Replace NaNs with None for JSON serialization

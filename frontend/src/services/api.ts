@@ -35,13 +35,18 @@ export const fetchOptions = async (symbol: string) => {
   return res.json();
 };
 
-export const fetchAnalyze = async (symbol: string, indicators: any) => {
+export const fetchAnalyze = async (symbol: string, indicators: any, capital?: number) => {
+  const bodyData: any = { symbol, indicators };
+  if (capital !== undefined) {
+    bodyData.capital = capital;
+  }
+  
   const res = await fetch(`${API_URL}/analyze/`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify({ symbol, indicators }),
+    body: JSON.stringify(bodyData),
   });
   return res.json();
 };

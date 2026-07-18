@@ -9,11 +9,16 @@ interface TradingPlanProps {
     tp2: string | number;
     tp3: string | number;
     risk_reward: string;
+    position_amount?: number | string;
+    position_size_rationale?: string;
   };
   signal: string;
+  explanation?: string;
+  institutional_perspective?: string;
+  risk_warning?: string;
 }
 
-export const TradingPlanCard: React.FC<TradingPlanProps> = ({ plan, signal }) => {
+export const TradingPlanCard: React.FC<TradingPlanProps> = ({ plan, signal, explanation, institutional_perspective, risk_warning }) => {
   if (!plan) return null;
 
   const isBuy = signal?.includes("Buy");
@@ -83,6 +88,57 @@ export const TradingPlanCard: React.FC<TradingPlanProps> = ({ plan, signal }) =>
             <p className="text-[10px] text-rose-500/70 mt-1">Risk: {riskPct.toFixed(2)}%</p>
           </div>
         </div>
+
+        {/* Position Sizing Section */}
+        {plan.position_amount && (
+          <div className="mt-6 pt-6 border-t border-slate-800">
+            <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl p-5 flex flex-col md:flex-row items-center gap-6">
+              <div className="flex flex-col items-center justify-center p-4 bg-amber-500/20 rounded-lg border border-amber-500/30 min-w-[200px]">
+                <p className="text-xs text-amber-500 font-bold uppercase tracking-wider mb-1">Recommended Position</p>
+                <p className="text-3xl font-mono font-black text-amber-400">${Number(plan.position_amount).toFixed(2)}</p>
+              </div>
+              
+              {plan.position_size_rationale && (
+                <div className="flex-1">
+                  <h4 className="text-sm font-bold text-amber-500 mb-2 flex items-center gap-2">
+                    <DollarSign className="w-4 h-4" /> Position Sizing Math
+                  </h4>
+                  <p className="text-sm text-slate-300 leading-relaxed">
+                    {plan.position_size_rationale}
+                  </p>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Veteran Insights Section */}
+        {(explanation || institutional_perspective || risk_warning) && (
+          <div className="mt-6 pt-6 border-t border-slate-800 space-y-4">
+            <h3 className="text-sm font-bold text-slate-300 uppercase tracking-wider mb-3">Veteran Insights</h3>
+            
+            {explanation && (
+              <div className="bg-slate-800/50 rounded-lg p-4 border border-slate-700/50">
+                <p className="text-xs text-blue-400 uppercase tracking-wider mb-1 font-semibold">Technical Rationale</p>
+                <p className="text-sm text-slate-300 leading-relaxed">{explanation}</p>
+              </div>
+            )}
+            
+            {institutional_perspective && (
+              <div className="bg-indigo-900/20 rounded-lg p-4 border border-indigo-500/20">
+                <p className="text-xs text-indigo-400 uppercase tracking-wider mb-1 font-semibold">Smart Money Perspective</p>
+                <p className="text-sm text-slate-300 leading-relaxed">{institutional_perspective}</p>
+              </div>
+            )}
+            
+            {risk_warning && (
+              <div className="bg-rose-900/20 rounded-lg p-4 border border-rose-500/20">
+                <p className="text-xs text-rose-400 uppercase tracking-wider mb-1 font-semibold">Risk Warning</p>
+                <p className="text-sm text-slate-300 leading-relaxed">{risk_warning}</p>
+              </div>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );

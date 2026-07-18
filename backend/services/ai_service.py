@@ -81,12 +81,12 @@ def analyze_sentiment(news_items: list) -> dict:
     news_text = "\n".join([f"- {item.get('title', '')}" for item in news_items[:5]])
 
     messages = [
-        {"role": "system", "content": "You are a helpful financial sentiment analyzer. Output only valid JSON."},
+        {"role": "system", "content": "You are a 30-year veteran institutional trader and risk manager. Output only valid JSON."},
         {"role": "user", "content": f"""
-    Analyze the sentiment of the following recent news headlines for a financial asset.
+    Analyze the sentiment of the following recent news headlines for a financial asset from the perspective of an institutional trader. Look for smart money implications.
     Respond ONLY with a valid JSON object (no markdown, no extra text) with these fields:
     - score: integer 0 to 100 (0=very bearish, 100=very bullish)
-    - summary: A 1-sentence explanation.
+    - summary: A 1-sentence explanation of institutional sentiment.
     - label: "Bullish", "Bearish", or "Neutral"
 
     News:
@@ -102,7 +102,7 @@ def analyze_sentiment(news_items: list) -> dict:
         return {"score": 50, "summary": f"Error analyzing sentiment: {str(e)}", "label": "Neutral"}
 
 
-def generate_trading_plan(symbol: str, indicators: dict) -> dict:
+def generate_trading_plan(symbol: str, indicators: dict, capital: float = None) -> dict:
     """
     Generates AI Buy/Sell/Hold signals and a Trading Plan using OpenRouter.
     """
@@ -113,33 +113,42 @@ def generate_trading_plan(symbol: str, indicators: dict) -> dict:
             "plan": None
         }
 
+    capital_instruction = ""
+    if capital is not None and capital > 0:
+        capital_instruction = f"\n    USER CAPITAL: ${capital:.2f}\n    6. Position Sizing: Since the user provided their capital (${capital:.2f}), calculate the EXACT dollar amount to invest ('position_amount') using a strict max 2% risk rule based on the entry and stop-loss distance. Explain the math in 'position_size_rationale'."
+
+
     messages = [
-        {"role": "system", "content": "You are a professional AI trading assistant. Output only valid JSON."},
+        {"role": "system", "content": "You are a 30-year veteran institutional trader and risk manager. You prioritize capital preservation, smart money concepts, and strict risk management. Output only valid JSON."},
         {"role": "user", "content": f"""
-    You are a professional AI trading assistant for {symbol}.
-    Based on the following live technical indicators, generate a professional trading analysis.
+    You are a 30-year veteran institutional trader analyzing {symbol}.
+    Based on the following live technical indicators, generate a professional, high-probability trading analysis.
     Do NOT use fake data, base your decision purely on the provided indicators.
 
     Indicators:
     {json.dumps(indicators, indent=2)}
 
     CRITICAL INSTRUCTIONS FOR ANALYSIS:
-    1. Multi-Timeframe (MTF) Confirmation: Check 'MTF_Trend_Weekly'. Trade in the direction of the MTF trend when possible.
-    2. Market Structure: Consider the 'Market_Structure' (e.g., Bullish HH/HL vs Bearish LH/LL).
-    3. Volume Confirmation: Look at 'Volume_Surge' to confirm if a breakout or trend has volume backing.
-    4. Candlestick Patterns: 'Candlestick_Pattern' reveals short-term reversal or continuation signs.
-    5. Price Action: 'PA_EMA50_Dist_Pct' indicates overextension.
+    1. Institutional Order Flow: Check 'Bullish_OB', 'Bearish_OB', and Liquidity markers. Smart money hunts liquidity.
+    2. Market Structure: Consider the 'Market_Structure' (e.g., Bullish HH/HL vs Bearish LH/LL). Trade with the trend.
+    3. Fibonacci Levels: Identify where price is relative to the provided Fib levels for pullbacks.
+    4. Risk Management: Heed the 'Suggested_Risk_Pct' and use ATR for Stop Loss. Capital preservation is key.
+    5. Candlestick & Volume: Confirm entries with 'Candlestick_Pattern' and 'Volume_Surge'.{capital_instruction}
 
     Respond ONLY with a valid JSON object (no markdown, no extra text) with:
     - signal: "Buy", "Sell", or "Hold"
-    - explanation: A detailed 2-4 sentence explanation based on the indicators, explicitly mentioning Market Structure, Volume, Candlestick Patterns, and MTF trend if relevant.
+    - explanation: A detailed 2-4 sentence explanation based on the indicators, explicitly mentioning Order Blocks, Liquidity, and Market Structure.
+    - institutional_perspective: A 1-2 sentence view on what "smart money" might be doing right now.
+    - risk_warning: A 1 sentence warning about potential pitfalls or invalidation levels for this setup.
     - plan: An object with (if signal is Buy or Sell, else null):
-        - entry: suggested entry price
-        - sl: Use the exact value from 'ATR_SL_Long' (if Buy) or 'ATR_SL_Short' (if Sell), or adapt slightly around it.
+        - entry: suggested entry price (often near an OB or Fib level)
+        - sl: Use the exact value from 'ATR_SL_Long' or 'ATR_SL_Short', or adapt slightly around liquidity.
         - tp1: take profit 1
         - tp2: take profit 2
         - tp3: take profit 3
         - risk_reward: risk/reward ratio as a string (e.g., "1:2")
+        - position_amount: Exact dollar amount to invest (if capital is provided, else null)
+        - position_size_rationale: 1-sentence explanation of the math (e.g., "2% risk of $1000 is $20. With a 5% stop loss, you can invest $400.")
     - forecast: An object containing:
         - tomorrow: object with `trend` ("Bullish", "Bearish", "Neutral") and `confidence` (0-100)
         - week: object with `trend` ("Bullish", "Bearish", "Neutral") and `confidence` (0-100)
@@ -167,16 +176,16 @@ def chat_with_ai(symbol: str, message: str, context: dict) -> dict:
         return {"response": "OpenRouter API key not configured. Cannot chat."}
 
     messages = [
-        {"role": "system", "content": "You are a professional AI trading assistant."},
+        {"role": "system", "content": "You are a 30-year veteran institutional trader and risk manager. You give no-nonsense, highly experienced trading advice."},
         {"role": "user", "content": f"""
-    You are a professional AI trading assistant for {symbol}.
+    You are a veteran trader with 30 years of institutional experience, mentoring the user on {symbol}.
     The user is asking a question about {symbol} or trading in general.
     You have the following live technical context (current price, indicators):
     {json.dumps(context, indent=2)}
 
     User Message: {message}
 
-    Respond professionally and concisely.
+    Respond professionally, concisely, and with the wisdom of a seasoned trader who prioritizes capital preservation and smart money concepts.
     """}
     ]
 

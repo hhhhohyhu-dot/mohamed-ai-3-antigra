@@ -25,6 +25,7 @@ export const Dashboard = () => {
   const [sentiment, setSentiment] = useState<any>(null);
   const [analysis, setAnalysis] = useState<any>(null);
   const [loading, setLoading] = useState(false);
+  const [capital, setCapital] = useState<number>(10000);
 
   const loadData = async (sym: string) => {
     setLoading(true);
@@ -49,7 +50,7 @@ export const Dashboard = () => {
         .catch(() => setSentiment({ score: 50, label: "Neutral", summary: "Could not load sentiment." }));
 
       if (indRes.indicators) {
-        fetchAnalyze(sym, indRes.indicators)
+        fetchAnalyze(sym, indRes.indicators, capital)
           .then((analyzeRes) => setAnalysis(analyzeRes.analysis))
           .catch(() => setAnalysis({ signal: "Hold", explanation: "AI analysis timed out. Try again.", plan: null }));
       }
@@ -81,6 +82,18 @@ export const Dashboard = () => {
               <p className="text-slate-400 mt-1">Professional Trading Platform</p>
             </div>
             <div className="flex items-center space-x-4">
+              <div className="flex items-center bg-slate-800 rounded-lg border border-slate-700 overflow-hidden">
+                <span className="pl-3 text-slate-400 font-medium">$</span>
+                <input 
+                  type="number" 
+                  value={capital}
+                  onChange={(e) => setCapital(Number(e.target.value))}
+                  onKeyDown={(e) => e.key === 'Enter' && loadData(symbol)}
+                  className="bg-transparent text-white px-2 py-2 focus:outline-none w-24"
+                  placeholder="Capital"
+                  title="Total Capital for Position Sizing"
+                />
+              </div>
               <input 
                 type="text" 
                 value={symbol}
@@ -240,7 +253,13 @@ export const Dashboard = () => {
 
                 {/* Trading Plan Card */}
                 {analysis && analysis.plan && analysis.signal !== 'Error' && (
-                  <TradingPlanCard plan={analysis.plan} signal={analysis.signal} />
+                  <TradingPlanCard 
+                    plan={analysis.plan} 
+                    signal={analysis.signal} 
+                    explanation={analysis.explanation}
+                    institutional_perspective={analysis.institutional_perspective}
+                    risk_warning={analysis.risk_warning}
+                  />
                 )}
 
                 {/* AI Chat component */}
