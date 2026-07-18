@@ -24,41 +24,22 @@ export const AuthContext = createContext<AuthContextType>({
 });
 
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const [user, setUser] = useState<User | null>(null);
-  const [token, setToken] = useState<string | null>(typeof window !== 'undefined' ? localStorage.getItem('token') : null);
-  const [loading, setLoading] = useState(true);
+  // Hardcoded bypass for authentication
+  const [user, setUser] = useState<User | null>({ id: 1, username: 'admin', email: 'admin@example.com' });
+  const [token, setToken] = useState<string | null>('dummy_token');
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    const loadUser = async () => {
-      if (token) {
-        try {
-          const userData = await fetchMe();
-          if (userData && userData.id) {
-            setUser(userData);
-          } else {
-            // Invalid token
-            logout();
-          }
-        } catch (error) {
-          console.error("Failed to fetch user:", error);
-          logout();
-        }
-      }
-      setLoading(false);
-    };
-
-    loadUser();
+    // No-op for loadUser since we are bypassing auth
+    setLoading(false);
   }, [token]);
 
   const login = (newToken: string) => {
-    localStorage.setItem('token', newToken);
     setToken(newToken);
   };
 
   const logout = () => {
-    localStorage.removeItem('token');
-    setToken(null);
-    setUser(null);
+    // No-op
   };
 
   return (

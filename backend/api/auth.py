@@ -51,23 +51,23 @@ def create_access_token(data: dict, expires_delta: timedelta | None = None):
     return encoded_jwt
 
 async def get_current_user(token: str = Depends(oauth2_scheme), db: AsyncSession = Depends(get_db)):
-    credentials_exception = HTTPException(
-        status_code=status.HTTP_401_UNAUTHORIZED,
-        detail="Could not validate credentials",
-        headers={"WWW-Authenticate": "Bearer"},
-    )
-    try:
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        username: str = payload.get("sub")
-        if username is None:
-            raise credentials_exception
-    except JWTError:
-        raise credentials_exception
-        
-    result = await db.execute(select(models.User).where(models.User.username == username))
+    # Bypassing auth completely as requested by the user
+    # Check if a dummy user exists, otherwise create it
+    result = await db.execute(select(models.User).where(models.User.username == "admin"))
     user = result.scalars().first()
-    if user is None:
-        raise credentials_exception
+    
+    if not user:
+        hashed_password = get_password_hash("password")
+        user = models.User(username="admin", email="admin@example.com", hashed_password=hashed_password)
+        db.add(user)
+        await db.commit()
+        await db.refresh(user)
+        
+        # Give them a starting portfolio
+        portfolio = models.Portfolio(user_id=user.id, balance=10000.0, equity=10000.0)
+        db.add(portfolio)
+        await db.commit()
+        
     return user
 
 @router.post("/register", response_model=Token)
