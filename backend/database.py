@@ -9,8 +9,19 @@ load_dotenv()
 # Example: postgresql+asyncpg://user:password@localhost/dbname
 DATABASE_URL = os.getenv("DATABASE_URL")
 
+# Smart fallback if DATABASE_URL is missing but other Postgres vars exist
 if not DATABASE_URL:
-    print("WARNING: No DATABASE_URL found in .env. Falling back to in-memory SQLite for immediate testing, but this is NOT supported for production.")
+    pghost = os.getenv("PGHOST")
+    pguser = os.getenv("PGUSER")
+    pgpassword = os.getenv("PGPASSWORD") or os.getenv("POSTGRES_PASSWORD")
+    pgdatabase = os.getenv("PGDATABASE")
+    pgport = os.getenv("PGPORT", "5432")
+    if pghost and pguser and pgpassword and pgdatabase:
+        DATABASE_URL = f"postgresql+asyncpg://{pguser}:{pgpassword}@{pghost}:{pgport}/{pgdatabase}"
+        print("INFO: Reconstructed DATABASE_URL from individual PG environment variables.")
+
+if not DATABASE_URL:
+    print("WARNING: No DATABASE_URL or PGHOST found in .env. Falling back to in-memory SQLite for immediate testing, but this is NOT supported for production.")
     # For local fallback during initial setup if the user hasn't provided a Postgres URL yet.
     # Note: we need aiosqlite for async sqlite
     DATABASE_URL = "sqlite+aiosqlite:///:memory:"
