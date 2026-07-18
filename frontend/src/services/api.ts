@@ -61,3 +61,29 @@ export const fetchChat = async (symbol: string, message: string, context: any) =
   });
   return res.json();
 };
+
+export const fetchActiveTrades = async () => {
+  const res = await fetch(`${API_URL}/trades/active`);
+  return res.json();
+};
+
+export const fetchTradeHistory = async () => {
+  const res = await fetch(`${API_URL}/trades/history`);
+  return res.json();
+};
+
+export const executeTrade = async (symbol: string, type: string, volume: number, entry_price: number) => {
+  const res = await fetch(`${API_URL}/trades/execute`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ symbol, type, volume, entry_price }),
+  });
+  return res.json();
+};
+
+export const closeTrade = async (trade_id: number, exit_price: number) => {
+  const res = await fetch(`${API_URL}/trades/close/${trade_id}?exit_price=${exit_price}`, {
+    method: 'POST',
+  });
+  return res.json();
+};

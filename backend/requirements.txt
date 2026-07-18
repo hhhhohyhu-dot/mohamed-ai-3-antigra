@@ -6,3 +6,10 @@ yfinance
 pandas
 pandas-ta
 httpx
+sqlalchemy
+asyncpg
+greenlet
+alembic
+python-jose[cryptography]
+passlib[bcrypt]
+python-multipart
