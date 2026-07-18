@@ -10,9 +10,10 @@ import { AITradingSignal } from './AITradingSignal';
 import { TradingPlanCard } from './TradingPlanCard';
 import { AIForecastCard } from './AIForecastCard';
 import { MacroDashboard } from './MacroDashboard';
+import { ProTerminal } from './ProTerminal';
 import { OptionsFrameworkCard } from './OptionsFrameworkCard';
 import { fetchChart, fetchDashboard, fetchIndicators, fetchNews, fetchSentiment, fetchAnalyze } from '../services/api';
-import { Activity, TrendingUp, TrendingDown, MessageSquare, Newspaper, Target, LayoutDashboard, List, Briefcase, Bell, Globe } from 'lucide-react';
+import { Activity, TrendingUp, TrendingDown, MessageSquare, Newspaper, Target, LayoutDashboard, List, Briefcase, Bell, Globe, Monitor } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 export const Dashboard = () => {
@@ -113,6 +114,7 @@ export const Dashboard = () => {
           
           <div className="flex space-x-2 overflow-x-auto pb-2">
             {[
+              { id: 'terminal', icon: <Monitor size={18} className="mr-2"/>, label: 'Pro Terminal' },
               { id: 'dashboard', icon: <LayoutDashboard size={18} className="mr-2"/>, label: 'Dashboard' },
               { id: 'macro', icon: <Globe size={18} className="mr-2"/>, label: 'Macro Agent' },
               { id: 'scanner', icon: <Activity size={18} className="mr-2"/>, label: 'Market Scanner' },
@@ -131,6 +133,7 @@ export const Dashboard = () => {
           </div>
         </div>
 
+        {activeTab === 'terminal' && <ProTerminal initialSymbol={symbol} />}
         {activeTab === 'macro' && <MacroDashboard />}
         {activeTab === 'scanner' && <MarketScanner onSelectSymbol={handleSelectSymbol} />}
         {activeTab === 'watchlist' && <Watchlist onSelectSymbol={handleSelectSymbol} />}
