@@ -16,9 +16,8 @@ if api_key:
     )
     # Free models to try in order (fallback chain)
     MODELS = [
-        "google/gemini-2.5-flash-free",
-        "google/gemini-2.5-pro-free",
-        "meta-llama/llama-4-scout:free",
+        "google/gemini-2.0-flash-exp:free",
+        "google/gemini-2.0-flash-thinking-exp:free",
         "meta-llama/llama-3.3-70b-instruct:free",
         "qwen/qwen-2.5-72b-instruct:free",
         "mistralai/mistral-7b-instruct:free",
@@ -64,8 +63,8 @@ def _call_ai(messages: list, use_json: bool = True, max_retries: int = 3) -> str
                     wait_time = (attempt + 1) * 2  # 2s, 4s, 6s
                     time.sleep(wait_time)
                     continue
-                # If model not found, try next model
-                elif "404" in error_str:
+                # If model not found or invalid (404, 400), break retry loop and try next model
+                elif any(x in error_str for x in ["404", "400", "invalid model"]):
                     break
                 else:
                     raise e
