@@ -43,8 +43,13 @@ app.add_middleware(
 @app.on_event("startup")
 async def startup_event():
     # Create database tables if they don't exist
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
+    try:
+        async with engine.begin() as conn:
+            await conn.run_sync(Base.metadata.create_all)
+        print("Database tables created successfully!")
+    except Exception as e:
+        print(f"DATABASE CONNECTION ERROR: {e}")
+        print("Continuing without database initialization to allow debugging...")
         
     # Start the WebSocket live data streamer in background
     asyncio.create_task(ws.stream_live_data())
