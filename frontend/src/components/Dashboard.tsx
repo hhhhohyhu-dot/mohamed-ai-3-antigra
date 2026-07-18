@@ -78,7 +78,7 @@ export const Dashboard = () => {
         <div className="bg-slate-900/50 p-6 rounded-2xl border border-slate-800 backdrop-blur-sm">
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
             <div>
-              <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-400 to-emerald-400 bg-clip-text text-transparent">Mohamed Z AI</h1>
+              <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-400 to-emerald-400 bg-clip-text text-transparent">Mohamed Z AI Pro</h1>
               <p className="text-slate-400 mt-1">Professional Trading Platform</p>
             </div>
             <div className="flex items-center space-x-4">

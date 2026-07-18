@@ -39,25 +39,25 @@ export const MacroDashboard = () => {
 
   const getStressColor = (regime: string) => {
     if (regime === 'RISK-ON') return 'text-emerald-400';
-    if (regime === 'NEUTRE') return 'text-yellow-400';
+    if (regime === 'NEUTRAL') return 'text-yellow-400';
     if (regime === 'RISK-OFF') return 'text-orange-400';
     return 'text-red-500';
   };
 
   const getZScoreColor = (regime: string) => {
-    if (regime === 'EXTRÊME') return 'bg-red-500/20 text-red-400 border-red-500/50';
-    if (regime === 'ATTENTION') return 'bg-orange-500/20 text-orange-400 border-orange-500/50';
+    if (regime === 'EXTREME') return 'bg-red-500/20 text-red-400 border-red-500/50';
+    if (regime === 'WARNING') return 'bg-orange-500/20 text-orange-400 border-orange-500/50';
     return 'bg-emerald-500/20 text-emerald-400 border-emerald-500/50';
   };
 
   const getMomentumLabel = (score: number) => {
-    if (score === 3) return { label: 'FORT HAUSSIER', color: 'text-emerald-500' };
-    if (score === 2) return { label: 'HAUSSIER', color: 'text-emerald-400' };
-    if (score === 1) return { label: 'LÉGER HAUSSIER', color: 'text-emerald-300' };
-    if (score === -1) return { label: 'LÉGER BAISSIER', color: 'text-red-300' };
-    if (score === -2) return { label: 'BAISSIER', color: 'text-red-400' };
-    if (score === -3) return { label: 'FORT BAISSIER', color: 'text-red-500' };
-    return { label: 'NEUTRE', color: 'text-slate-400' };
+    if (score === 3) return { label: 'STRONG BULLISH', color: 'text-emerald-500' };
+    if (score === 2) return { label: 'BULLISH', color: 'text-emerald-400' };
+    if (score === 1) return { label: 'SLIGHTLY BULLISH', color: 'text-emerald-300' };
+    if (score === -1) return { label: 'SLIGHTLY BEARISH', color: 'text-red-300' };
+    if (score === -2) return { label: 'BEARISH', color: 'text-red-400' };
+    if (score === -3) return { label: 'STRONG BEARISH', color: 'text-red-500' };
+    return { label: 'NEUTRAL', color: 'text-slate-400' };
   };
 
   return (
@@ -87,7 +87,7 @@ export const MacroDashboard = () => {
             </div>
           </div>
           <div className="text-xs text-slate-400 text-center mt-2">
-            Basé sur VIX, VVIX, HYG, TLT, et DXY
+            Based on VIX, VVIX, HYG, TLT, and DXY
           </div>
         </div>
 
@@ -95,13 +95,13 @@ export const MacroDashboard = () => {
         <div className="bg-slate-900/50 border border-slate-800 rounded-xl p-6 backdrop-blur-sm col-span-1 md:col-span-2">
           <h2 className="text-lg font-semibold mb-4 flex items-center">
             <ShieldAlert className="mr-2 text-yellow-400" size={20} />
-            Alertes & Divergences Intermarket
+            Intermarket Alerts & Divergences
           </h2>
           {divergences.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-32 text-slate-400">
               <Activity size={32} className="mb-2 opacity-50" />
-              <p>Aucune divergence majeure détectée.</p>
-              <p className="text-sm">Le marché est aligné.</p>
+              <p>No major divergences detected.</p>
+              <p className="text-sm">The market is aligned.</p>
             </div>
           ) : (
             <div className="space-y-3">
@@ -125,17 +125,17 @@ export const MacroDashboard = () => {
       <div className="bg-slate-900/50 border border-slate-800 rounded-xl p-6 backdrop-blur-sm">
         <h2 className="text-lg font-semibold mb-4 flex items-center">
           <BarChart2 className="mr-2 text-indigo-400" size={20} />
-          Tableau de Bord Z-Score & Momentum
+          Z-Score & Momentum Dashboard
         </h2>
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse">
             <thead>
               <tr className="border-b border-slate-800 text-slate-400 text-sm">
-                <th className="pb-3 px-4">Indicateur</th>
-                <th className="pb-3 px-4">Prix</th>
-                <th className="pb-3 px-4">Variation</th>
-                <th className="pb-3 px-4">Z-Score (252j)</th>
-                <th className="pb-3 px-4">Régime</th>
+                <th className="pb-3 px-4">Indicator</th>
+                <th className="pb-3 px-4">Price</th>
+                <th className="pb-3 px-4">Change</th>
+                <th className="pb-3 px-4">Z-Score (252d)</th>
+                <th className="pb-3 px-4">Regime</th>
                 <th className="pb-3 px-4">Momentum</th>
               </tr>
             </thead>

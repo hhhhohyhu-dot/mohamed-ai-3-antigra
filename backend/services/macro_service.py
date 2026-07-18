@@ -64,9 +64,9 @@ def get_macro_data() -> dict:
         # Regime Statistique
         regime = "NORMAL"
         if abs(z_score) > 2:
-            regime = "EXTRÊME"
+            regime = "EXTREME"
         elif abs(z_score) > 1:
-            regime = "ATTENTION"
+            regime = "WARNING"
             
         # Momentum (5d, 10d, 20d)
         mom_5 = latest_price - close_prices.iloc[-5] if len(close_prices) >= 5 else 0
@@ -110,9 +110,9 @@ def get_macro_data() -> dict:
         stress_index = (vix_s * 0.30) + (vvix_s * 0.20) + (hyg_s * 0.20) + (tlt_s * 0.15) + (dxy_s * 0.15)
         
     stress_regime = "RISK-ON"
-    if stress_index >= 75: stress_regime = "EXTRÊME"
+    if stress_index >= 75: stress_regime = "EXTREME"
     elif stress_index >= 50: stress_regime = "RISK-OFF"
-    elif stress_index >= 25: stress_regime = "NEUTRE"
+    elif stress_index >= 25: stress_regime = "NEUTRAL"
 
     # Divergences Intermarket
     divergences = []
@@ -126,15 +126,15 @@ def get_macro_data() -> dict:
     gold_chg = results.get("Gold", {}).get("change_pct", 0)
     
     if nq_chg > 0.3 and hyg_chg < -0.2:
-        divergences.append({"code": "NQ^ HYGv", "desc": "Crédit ne confirme pas le rally — fakeout probable", "action": "Méfiance, stops serrés sur longs", "type": "warning"})
+        divergences.append({"code": "NQ^ HYGv", "desc": "Credit does not confirm the rally — fakeout probable", "action": "Caution, tight stops on longs", "type": "warning"})
     if vix_chg < -1 and vvix_chg > 1:
-        divergences.append({"code": "VIXv VVIX^", "desc": "Calme apparent mais nervosité options — instabilité cachée", "action": "Réduire taille de 30%", "type": "warning"})
+        divergences.append({"code": "VIXv VVIX^", "desc": "Apparent calm but options nervousness — hidden instability", "action": "Reduce size by 30%", "type": "warning"})
     if dxy_chg > 0.3 and tnx_chg > 0.3:
-        divergences.append({"code": "DXY^ 10Y^", "desc": "Double pression sur NQ — conditions très restrictives", "action": "Éviter les longs, chercher shorts", "type": "danger"})
+        divergences.append({"code": "DXY^ 10Y^", "desc": "Double pressure on NQ — very restrictive conditions", "action": "Avoid longs, look for shorts", "type": "danger"})
     if nq_chg > 0.5 and tlt_chg > 0.5:
-        divergences.append({"code": "NQ^ TLT^", "desc": "Rally actions ET obligations simultané — manque de conviction", "action": "Rally suspect, ne pas surcharger", "type": "warning"})
+        divergences.append({"code": "NQ^ TLT^", "desc": "Simultaneous equities AND bonds rally — lack of conviction", "action": "Suspect rally, do not overload", "type": "warning"})
     if nq_chg < -0.5 and gold_chg > 0.5:
-        divergences.append({"code": "NQv Gold^", "desc": "Risk-Off classique — fuite vers sécurité", "action": "Confirme biais baissier", "type": "danger"})
+        divergences.append({"code": "NQv Gold^", "desc": "Classic Risk-Off — flight to safety", "action": "Confirms bearish bias", "type": "danger"})
         
     return {
         "indicators": results,
