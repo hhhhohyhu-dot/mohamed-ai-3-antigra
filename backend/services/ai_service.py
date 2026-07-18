@@ -12,7 +12,11 @@ api_key = os.getenv("OPENROUTER_API_KEY", "")
 if api_key:
     client = OpenAI(
         api_key=api_key,
-        base_url="https://openrouter.ai/api/v1"
+        base_url="https://openrouter.ai/api/v1",
+        default_headers={
+            "HTTP-Referer": "https://github.com/hhhhohyhu-dot/mohamed-ai-3-antigra",
+            "X-Title": "Mohamed Z AI Trading"
+        }
     )
     # Free models to try in order (fallback chain)
     MODELS = [
@@ -51,8 +55,8 @@ def _call_ai(messages: list, use_json: bool = True, max_retries: int = 3) -> str
                     "model": model,
                     "messages": messages,
                 }
-                if use_json:
-                    kwargs["response_format"] = {"type": "json_object"}
+                # We do not use response_format={"type": "json_object"} because many free OpenRouter models do not support it and throw 400 errors.
+                # The system prompt and _clean_json will handle formatting.
 
                 response = client.chat.completions.create(**kwargs)
                 return response.choices[0].message.content.strip()
@@ -63,12 +67,11 @@ def _call_ai(messages: list, use_json: bool = True, max_retries: int = 3) -> str
                     wait_time = (attempt + 1) * 2  # 2s, 4s, 6s
                     time.sleep(wait_time)
                     continue
-                # If model not found or invalid (404, 400), break retry loop and try next model
-                elif any(x in error_str for x in ["404", "400", "invalid model"]):
-                    break
+                # For any other error (400, 404, etc), break retry loop and try the next model immediately
                 else:
-                    raise e
-    raise Exception("All AI models are currently busy. Please try again in a moment.")
+                    break
+    
+    raise Exception(f"All AI models are currently busy or unavailable. Last error: {error_str}")
 
 
 def analyze_sentiment(news_items: list) -> dict:
