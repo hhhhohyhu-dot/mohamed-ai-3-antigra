@@ -58,6 +58,9 @@ async def startup_event():
 def health_check():
     return {"status": "ok"}
 
+import os
+from fastapi.staticfiles import StaticFiles
+
 app.include_router(dashboard.router, prefix="/api/dashboard", tags=["Dashboard"])
 app.include_router(chart.router, prefix="/api/chart", tags=["Chart"])
 app.include_router(analyze.router, prefix="/api/analyze", tags=["Analyze"])
@@ -70,6 +73,10 @@ app.include_router(options.router, prefix="/api/options", tags=["Options"])
 app.include_router(trades.router, prefix="/api/trades", tags=["Trades"])
 app.include_router(auth.router, prefix="/api/auth", tags=["Auth"])
 app.include_router(ws.router, prefix="/ws", tags=["WebSockets"])
+
+# Mount the static Next.js frontend UI
+if os.path.exists("static"):
+    app.mount("/", StaticFiles(directory="static", html=True), name="static")
 
 if __name__ == "__main__":
     uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
