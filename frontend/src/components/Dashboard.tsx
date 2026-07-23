@@ -15,6 +15,8 @@ import { Backtester } from './Backtester';
 import { OptionsFrameworkCard } from './OptionsFrameworkCard';
 import { MTFAnalysis } from './MTFAnalysis';
 import { AINewsScorer } from './AINewsScorer';
+import { EconomicCalendarCard } from './EconomicCalendarCard';
+import { CorrelationHeatmap } from './CorrelationHeatmap';
 import { fetchChart, fetchDashboard, fetchIndicators, fetchNews, fetchSentiment, fetchAnalyze } from '../services/api';
 import { Activity, TrendingUp, TrendingDown, MessageSquare, Newspaper, Target, LayoutDashboard, List, Briefcase, Bell, Globe, Monitor } from 'lucide-react';
 import { motion } from 'framer-motion';
@@ -333,6 +335,7 @@ export const Dashboard = () => {
                 {analysis && analysis.plan && analysis.signal !== 'Error' && analysis.signal !== 'NO TRADE' && (
                   <TradingPlanCard 
                     symbol={symbol}
+                    capital={capital}
                     plan={analysis.plan} 
                     signal={analysis.signal} 
                     explanation={analysis.explanation}
@@ -361,6 +364,13 @@ export const Dashboard = () => {
 
               </div>
             </div>
+            
+            {/* Macro & Correlation Intelligence Suite */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
+              <EconomicCalendarCard />
+              <CorrelationHeatmap />
+            </div>
+            
             </div>
           )
         )}

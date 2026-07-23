@@ -504,4 +504,76 @@ def calculate_mtf_indicators(symbol: str) -> dict:
     result['h4_trend'] = result.get('h4', {}).get('trend', 'Unknown')
     result['h4_rsi'] = result.get('h4', {}).get('rsi', None)
 
+    # Calculate session levels and sweeps for Forex/any symbol
+    try:
+        session_levels = calculate_session_levels(symbol)
+        result['session_levels'] = session_levels
+    except Exception:
+        result['session_levels'] = {}
+
     return result
+
+
+def calculate_session_levels(symbol: str) -> dict:
+    """
+    Fetches 1-hour historical data for the last 5 days and calculates:
+    - Asian Session High/Low (00:00 - 08:00 UTC)
+    - London Session High/Low (08:00 - 16:00 UTC)
+    - New York Session High/Low (12:00 - 20:00 UTC)
+    - Rejection sweeps: Has price swept (exceeded then closed inside) any of these levels?
+    """
+    from services.data_service import normalize_symbol
+    import yfinance as yf
+    
+    symbol_normalized = normalize_symbol(symbol)
+    try:
+        ticker = yf.Ticker(symbol_normalized)
+        # Fetch 5 days of 1-hour candles
+        df_1h = ticker.history(period="5d", interval="1h")
+        if df_1h.empty:
+            return {}
+            
+        df_1h.reset_index(inplace=True)
+        # Identify date column
+        date_col = 'Date' if 'Date' in df_1h.columns else 'Datetime'
+        df_1h = df_1h.rename(columns={date_col: 'time', 'Open': 'open', 'High': 'high', 'Low': 'low', 'Close': 'close'})
+        df_1h['time'] = pd.to_datetime(df_1h['time'], utc=True)
+        df_1h.set_index('time', inplace=True)
+        
+        # Extract hours
+        asian_prices = df_1h[df_1h.index.hour.isin([0, 1, 2, 3, 4, 5, 6, 7])]
+        london_prices = df_1h[df_1h.index.hour.isin([8, 9, 10, 11, 12, 13, 14, 15])]
+        ny_prices = df_1h[df_1h.index.hour.isin([12, 13, 14, 15, 16, 17, 18, 19, 20])]
+        
+        levels = {}
+        if not asian_prices.empty:
+            levels["asian_high"] = float(asian_prices['high'].max())
+            levels["asian_low"] = float(asian_prices['low'].min())
+        if not london_prices.empty:
+            levels["london_high"] = float(london_prices['high'].max())
+            levels["london_low"] = float(london_prices['low'].min())
+        if not ny_prices.empty:
+            levels["ny_high"] = float(ny_prices['high'].max())
+            levels["ny_low"] = float(ny_prices['low'].min())
+            
+        # Detect sweeps using the latest 1H close
+        latest_close = float(df_1h['close'].iloc[-1])
+        latest_high = float(df_1h['high'].iloc[-1])
+        latest_low = float(df_1h['low'].iloc[-1])
+        
+        sweeps = []
+        if "asian_high" in levels and latest_high > levels["asian_high"] and latest_close <= levels["asian_high"]:
+            sweeps.append("Asian Session High Swept (Bearish)")
+        if "asian_low" in levels and latest_low < levels["asian_low"] and latest_close >= levels["asian_low"]:
+            sweeps.append("Asian Session Low Swept (Bullish)")
+            
+        if "london_high" in levels and latest_high > levels["london_high"] and latest_close <= levels["london_high"]:
+            sweeps.append("London Session High Swept (Bearish)")
+        if "london_low" in levels and latest_low < levels["london_low"] and latest_close >= levels["london_low"]:
+            sweeps.append("London Session Low Swept (Bullish)")
+            
+        levels["sweeps"] = sweeps
+        return levels
+    except Exception as e:
+        print(f"Error calculating session levels: {e}")
+        return {}

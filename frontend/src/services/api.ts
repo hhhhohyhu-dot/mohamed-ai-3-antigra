@@ -147,3 +147,13 @@ export const runBacktest = async (symbol: string, strategy: string, initial_capi
   return res.json();
 };
 
+export const fetchCalendar = async () => {
+  const res = await fetch(`${API_URL}/calendar/`);
+  return res.json();
+};
+
+export const fetchCorrelation = async () => {
+  const res = await fetch(`${API_URL}/correlation/`);
+  return res.json();
+};
+

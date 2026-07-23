@@ -1,5 +1,6 @@
 import React from 'react';
 import { Target, TrendingUp, TrendingDown, Crosshair, DollarSign, Activity, Clock, Timer } from 'lucide-react';
+import { LotSizeCalculator } from './LotSizeCalculator';
 
 interface TradingPlanProps {
   plan: {
@@ -22,12 +23,13 @@ interface TradingPlanProps {
   };
   signal: string;
   symbol?: string;
+  capital?: number;
   explanation?: string;
   institutional_perspective?: string;
   risk_warning?: string;
 }
 
-export const TradingPlanCard: React.FC<TradingPlanProps> = ({ plan, signal, symbol, explanation, institutional_perspective, risk_warning }) => {
+export const TradingPlanCard: React.FC<TradingPlanProps> = ({ plan, signal, symbol, capital, explanation, institutional_perspective, risk_warning }) => {
   if (!plan) return null;
 
   const isBuy = signal?.includes("Buy");
@@ -165,6 +167,16 @@ export const TradingPlanCard: React.FC<TradingPlanProps> = ({ plan, signal, symb
                 </div>
               )}
             </div>
+          </div>
+        )}
+
+        {/* Lot Size Calculator (Only for Forex assets) */}
+        {isForex && (
+          <div className="mt-6 pt-6 border-t border-slate-800">
+            <LotSizeCalculator 
+              initialSlPips={plan.forex_pips?.sl_pips || 30} 
+              initialCapital={capital || 10000}
+            />
           </div>
         )}
 
