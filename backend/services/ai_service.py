@@ -370,3 +370,68 @@ def generate_macro_commentary(macro_data: dict) -> dict:
             "key_theme": "Unable to assess",
             "actionable_insight": "Please try again."
         }
+
+
+def analyze_backtest(symbol: str, strategy: str, metrics: dict, completed_trades: list) -> dict:
+    """
+    Analyzes backtest results using OpenRouter AI.
+    Returns a structured analysis: executive summary, regime analysis, optimization recommendations, risk rules.
+    """
+    if not client:
+        return {
+            "summary": "AI commentary unavailable: OpenRouter key not configured.",
+            "regime_analysis": "N/A",
+            "optimizations": "N/A",
+            "risk_rules": "N/A"
+        }
+
+    # Format a summary of the trades to keep context size small but descriptive
+    trades_summary = ""
+    if completed_trades:
+        trades_summary = "\n".join([
+            f"Trade {t['id']}: {t['type']} on {t['entry_date']} exit on {t['exit_date']} entry_price={t['entry_price']} exit_price={t['exit_price']} pnl={t['pnl_pct']}% (${t['pnl_abs']})"
+            for t in completed_trades[:15] # Send up to 15 trades
+        ])
+        if len(completed_trades) > 15:
+            trades_summary += f"\n... and {len(completed_trades) - 15} more trades."
+    else:
+        trades_summary = "No trades were executed."
+
+    messages = [
+        {"role": "system", "content": "You are a quantitative trading researcher and risk officer at a major hedge fund. Output only valid JSON."},
+        {"role": "user", "content": f"""
+    Analyze these historical backtest results and generate a quantitative audit report for our desk.
+
+    BACKTEST RESULTS FOR {symbol}:
+    - Strategy: {strategy}
+    - Initial Capital: ${metrics.get('initial_capital')}
+    - Final Capital: ${metrics.get('final_capital')}
+    - Total Return: {metrics.get('total_return_pct')}%
+    - Win Rate: {metrics.get('win_rate_pct')}%
+    - Profit Factor: {metrics.get('profit_factor')}
+    - Max Drawdown: {metrics.get('max_drawdown_pct')}%
+    - Total Trades Executed: {metrics.get('total_trades')}
+
+    HISTORICAL TRADES SAMPLES:
+    {trades_summary}
+
+    Based on this data, respond ONLY with a valid JSON object (no markdown wrappers, no backticks, no other text) containing:
+    - summary: 2-3 sentences summarizing the performance and overall audit of the strategy.
+    - regime_analysis: 2 sentences analyzing under which market regime (trending, choppy, volatile) this strategy succeeded or failed on this asset.
+    - optimizations: 2-3 bullet points or sentences proposing parameter optimizations (e.g. altering thresholds, adding filters, changing holding periods).
+    - risk_rules: 2 sentences outlining custom risk rules (e.g., maximum drawdown circuit breakers, size scaling, stop loss adjustments) specifically for running this strategy on {symbol}.
+    """}
+    ]
+
+    try:
+        text = _call_ai(messages, use_json=True)
+        text = _clean_json(text)
+        return json.loads(text)
+    except Exception as e:
+        return {
+            "summary": f"Backtest analysis failed: {str(e)}",
+            "regime_analysis": "Error during analysis.",
+            "optimizations": "Failed to generate recommendations.",
+            "risk_rules": "No custom risk rules available."
+        }
+

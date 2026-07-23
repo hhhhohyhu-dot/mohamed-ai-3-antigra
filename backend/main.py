@@ -7,7 +7,7 @@ import json
 from dotenv import load_dotenv
 load_dotenv()
 import asyncio
-from api import dashboard, chart, analyze, news, indicators, sentiment, chat, macro, macro_ai, options, trades, auth, ws
+from api import dashboard, chart, analyze, news, indicators, sentiment, chat, macro, macro_ai, options, trades, auth, ws, backtest
 from database import engine, Base
 
 class SafeJSONResponse(JSONResponse):
@@ -76,6 +76,8 @@ app.include_router(options.router, prefix="/api/options", tags=["Options"])
 app.include_router(trades.router, prefix="/api/trades", tags=["Trades"])
 app.include_router(auth.router, prefix="/api/auth", tags=["Auth"])
 app.include_router(ws.router, prefix="/ws", tags=["WebSockets"])
+app.include_router(backtest.router, prefix="/api/backtest", tags=["Backtest"])
+
 
 # Mount the static Next.js frontend UI
 current_dir = os.path.dirname(os.path.abspath(__file__))

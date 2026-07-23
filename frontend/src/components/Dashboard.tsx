@@ -11,6 +11,7 @@ import { TradingPlanCard } from './TradingPlanCard';
 import { AIForecastCard } from './AIForecastCard';
 import { MacroDashboard } from './MacroDashboard';
 import { ProTerminal } from './ProTerminal';
+import { Backtester } from './Backtester';
 import { OptionsFrameworkCard } from './OptionsFrameworkCard';
 import { MTFAnalysis } from './MTFAnalysis';
 import { AINewsScorer } from './AINewsScorer';
@@ -124,6 +125,7 @@ export const Dashboard = () => {
             {[
               { id: 'terminal', icon: <Monitor size={18} className="mr-2"/>, label: 'Pro Terminal' },
               { id: 'dashboard', icon: <LayoutDashboard size={18} className="mr-2"/>, label: 'Dashboard' },
+              { id: 'backtest', icon: <TrendingUp size={18} className="mr-2"/>, label: 'Backtester' },
               { id: 'macro', icon: <Globe size={18} className="mr-2"/>, label: 'Macro Agent' },
               { id: 'scanner', icon: <Activity size={18} className="mr-2"/>, label: 'Market Scanner' },
               { id: 'watchlist', icon: <List size={18} className="mr-2"/>, label: 'Watchlist' },
@@ -143,6 +145,7 @@ export const Dashboard = () => {
 
         {activeTab === 'terminal' && <ProTerminal initialSymbol={symbol} />}
         {activeTab === 'macro' && <MacroDashboard />}
+        {activeTab === 'backtest' && <Backtester initialSymbol={symbol} />}
         {activeTab === 'scanner' && <MarketScanner onSelectSymbol={handleSelectSymbol} />}
         {activeTab === 'watchlist' && <Watchlist onSelectSymbol={handleSelectSymbol} />}
         {activeTab === 'portfolio' && <Portfolio currentSymbol={symbol} currentPrice={dashboardData?.price || 0} />}

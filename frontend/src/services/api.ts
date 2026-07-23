@@ -137,3 +137,13 @@ export const closeTrade = async (trade_id: number, exit_price: number) => {
   });
   return res.json();
 };
+
+export const runBacktest = async (symbol: string, strategy: string, initial_capital: number, parameters: Record<string, any>) => {
+  const res = await fetch(`${API_URL}/backtest/run`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ symbol, strategy, initial_capital, parameters }),
+  });
+  return res.json();
+};
+
