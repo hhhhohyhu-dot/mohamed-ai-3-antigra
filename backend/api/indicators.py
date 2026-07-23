@@ -1,39 +1,41 @@
 from fastapi import APIRouter
 from services.data_service import get_historical_data
-from services.indicator_service import calculate_indicators
+from services.indicator_service import calculate_indicators, calculate_mtf_indicators
 
 router = APIRouter()
 
 @router.get("/{symbol}")
 def get_indicators(symbol: str):
-    # Daily Data
+    """
+    Returns full technical indicators for the symbol including:
+    - Daily indicators (RSI, MACD, EMAs, SMC, CMF, Fibonacci, 12 candlestick patterns...)
+    - Multi-Timeframe (MTF) analysis: Weekly, Daily, 4H trend with EMA/RSI/MACD breakdown
+    """
+    # Daily Data (primary timeframe)
     df_daily = get_historical_data(symbol, period="2y", interval="1d")
     if df_daily.empty:
         return {"error": "No daily data found"}
     
     indicators = calculate_indicators(df_daily)
 
-    # Weekly Data for MTF Confirmation
-    df_weekly = get_historical_data(symbol, period="5y", interval="1wk")
-    if not df_weekly.empty and len(df_weekly) > 20:
-        weekly_indicators = calculate_indicators(df_weekly)
-        
-        # Simple weekly trend logic:
-        # If Weekly EMA20 > EMA50 and Close > EMA20 -> Strong Bullish MTF
-        # Else if Weekly EMA20 < EMA50 and Close < EMA20 -> Strong Bearish MTF
-        weekly_trend = "Neutral"
-        w_ema20 = weekly_indicators.get("EMA20")
-        w_ema50 = weekly_indicators.get("EMA50")
-        w_close = df_weekly.iloc[-1]["close"]
-        
-        if w_ema20 and w_ema50:
-            if w_ema20 > w_ema50 and w_close > w_ema20:
-                weekly_trend = "Bullish"
-            elif w_ema20 < w_ema50 and w_close < w_ema20:
-                weekly_trend = "Bearish"
-        
-        indicators["MTF_Trend_Weekly"] = weekly_trend
-    else:
+    # Full MTF Analysis (Weekly + Daily + 4H)
+    try:
+        mtf = calculate_mtf_indicators(symbol)
+        indicators["MTF"] = {
+            "weekly": mtf.get("weekly", {}),
+            "daily": mtf.get("daily", {}),
+            "h4": mtf.get("h4", {}),
+            "alignment_score": mtf.get("alignment_score", 0),
+            "bearish_count": mtf.get("bearish_count", 0),
+        }
+        # Keep backward-compatible field
+        indicators["MTF_Trend_Weekly"] = mtf.get("weekly_trend", "Unknown")
+        indicators["MTF_Trend_Daily"] = mtf.get("daily_trend", "Unknown")
+        indicators["MTF_Trend_4H"] = mtf.get("h4_trend", "Unknown")
+    except Exception as e:
+        indicators["MTF"] = None
         indicators["MTF_Trend_Weekly"] = "Unknown"
+        indicators["MTF_Trend_Daily"] = "Unknown"
+        indicators["MTF_Trend_4H"] = "Unknown"
 
     return {"symbol": symbol, "indicators": indicators}

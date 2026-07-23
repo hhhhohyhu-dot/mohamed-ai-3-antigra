@@ -67,6 +67,18 @@ export const fetchMacro = async () => {
   return res.json();
 };
 
+export const fetchMacroCommentary = async () => {
+  const res = await fetch(`${API_URL}/macro/commentary`);
+  return res.json();
+};
+
+export const fetchMTF = async (symbol: string) => {
+  // MTF is now embedded in the indicators response, but we provide a dedicated helper
+  const res = await fetch(`${API_URL}/indicators/${symbol}`);
+  const data = await res.json();
+  return data?.indicators?.MTF || null;
+};
+
 export const fetchOptions = async (symbol: string) => {
   const res = await fetch(`${API_URL}/options/${symbol}`);
   return res.json();

@@ -12,6 +12,8 @@ import { AIForecastCard } from './AIForecastCard';
 import { MacroDashboard } from './MacroDashboard';
 import { ProTerminal } from './ProTerminal';
 import { OptionsFrameworkCard } from './OptionsFrameworkCard';
+import { MTFAnalysis } from './MTFAnalysis';
+import { AINewsScorer } from './AINewsScorer';
 import { fetchChart, fetchDashboard, fetchIndicators, fetchNews, fetchSentiment, fetchAnalyze } from '../services/api';
 import { Activity, TrendingUp, TrendingDown, MessageSquare, Newspaper, Target, LayoutDashboard, List, Briefcase, Bell, Globe, Monitor } from 'lucide-react';
 import { motion } from 'framer-motion';
@@ -27,9 +29,12 @@ export const Dashboard = () => {
   const [analysis, setAnalysis] = useState<any>(null);
   const [loading, setLoading] = useState(false);
   const [capital, setCapital] = useState<number>(10000);
+  const [sentimentLoading, setSentimentLoading] = useState(false);
 
   const loadData = async (sym: string) => {
     setLoading(true);
+    setSentiment(null);
+    setSentimentLoading(true);
     try {
       // Load fast data first (chart, dashboard, indicators, news)
       const [chartRes, dashRes, indRes, newsRes] = await Promise.all([
@@ -45,20 +50,23 @@ export const Dashboard = () => {
       setNews(newsRes.news);
       setLoading(false);
 
-      // Load AI data in the background (won't block the UI)
+      // Load AI Sentiment (with per-article scoring) in background
       fetchSentiment(sym)
         .then((sentRes) => setSentiment(sentRes.sentiment))
-        .catch(() => setSentiment({ score: 50, label: "Neutral", summary: "Could not load sentiment." }));
+        .catch(() => setSentiment({ score: 50, label: 'Neutral', summary: 'Could not load sentiment.', articles: [] }))
+        .finally(() => setSentimentLoading(false));
 
+      // Load AI Analysis (with MTF + Macro) in background
       if (indRes.indicators) {
         fetchAnalyze(sym, indRes.indicators, capital)
           .then((analyzeRes) => setAnalysis(analyzeRes.analysis))
-          .catch(() => setAnalysis({ signal: "Hold", explanation: "AI analysis timed out. Try again.", plan: null }));
+          .catch(() => setAnalysis({ signal: 'Hold', explanation: 'AI analysis timed out. Try again.', plan: null }));
       }
 
     } catch (error) {
-      console.error("Failed to load data", error);
+      console.error('Failed to load data', error);
       setLoading(false);
+      setSentimentLoading(false);
     }
   };
 
@@ -233,6 +241,13 @@ export const Dashboard = () => {
                   </motion.div>
                 )}
 
+                {/* MTF Analysis */}
+                {(indicators?.MTF || analysis?.mtf) && (
+                  <div className="mt-0">
+                    <MTFAnalysis mtf={analysis?.mtf || indicators?.MTF} />
+                  </div>
+                )}
+
                 {/* Options Framework Section */}
                 {dashboardData && !dashboardData.symbol.includes('=X') && !dashboardData.symbol.includes('-USD') && (
                   <div className="mt-6">
@@ -299,71 +314,21 @@ export const Dashboard = () => {
 
                 {/* AI Chat component */}
                 {indicators && (
-                  <AIChat symbol={symbol} context={{ price: dashboardData?.price, indicators }} />
+                  <AIChat 
+                    symbol={symbol} 
+                    context={{ 
+                      price: dashboardData?.price, 
+                      indicators,
+                      trade_plan: analysis?.plan || null,
+                      signal: analysis?.signal || null,
+                      risk_engine_result: analysis?.strict_evaluation?.risk_evaluation || null,
+                      mtf: analysis?.mtf || indicators?.MTF || null,
+                    }} 
+                  />
                 )}
 
-                {/* Sentiment & News */}
-                <motion.div 
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.3 }}
-                  className="bg-slate-900 rounded-2xl border border-slate-800 p-6 shadow-xl"
-                >
-                  <h3 className="text-xl font-bold mb-4 flex items-center">
-                    <MessageSquare className="mr-2 text-purple-400" /> Market Sentiment
-                  </h3>
-                  
-                  {sentiment && (
-                    <div className="mb-6">
-                      <div className="flex justify-between items-center mb-2">
-                        <span className="text-slate-400">AI Sentiment Score</span>
-                        <span className={`font-bold ${
-                          sentiment.score > 60 ? 'text-emerald-400' : 
-                          sentiment.score < 40 ? 'text-rose-400' : 'text-slate-300'
-                        }`}>{sentiment.score}/100</span>
-                      </div>
-                      <div className="w-full bg-slate-800 rounded-full h-2">
-                        <div 
-                          className={`h-2 rounded-full ${
-                            sentiment.score > 60 ? 'bg-emerald-500' : 
-                            sentiment.score < 40 ? 'bg-rose-500' : 'bg-slate-500'
-                          }`} 
-                          style={{ width: `${sentiment.score}%` }}
-                        ></div>
-                      </div>
-                      <p className="mt-4 text-sm text-slate-300 italic">"{sentiment.summary}"</p>
-                    </div>
-                  )}
-                  
-                  <h4 className="font-semibold text-slate-300 mb-3 flex items-center mt-6 border-t border-slate-800 pt-4">
-                    <Newspaper className="mr-2 text-slate-400" size={16} /> Latest News
-                  </h4>
-                  <div className="space-y-4 max-h-60 overflow-y-auto pr-2">
-                    {!news && loading && (
-                      <p className="text-slate-500 text-sm">Loading latest news...</p>
-                    )}
-                    {(!news || news.length === 0) && !loading && (
-                      <p className="text-slate-500 text-sm">No recent news available.</p>
-                    )}
-                    {news && news.length > 0 && news.slice(0, 5).map((item: any, i: number) => {
-                      // Date Validation
-                      let dateStr = "Recent";
-                      if (item.providerPublishTime) {
-                         const d = new Date(item.providerPublishTime * 1000);
-                         if (!isNaN(d.getTime())) dateStr = d.toLocaleString();
-                      } else if (item.datetime) {
-                         const d = new Date(item.datetime);
-                         if (!isNaN(d.getTime())) dateStr = d.toLocaleString();
-                      }
-                      
-                      return (
-                      <a key={i} href={item.link || '#'} target="_blank" rel="noreferrer" className="block p-3 rounded-lg bg-slate-800/50 hover:bg-slate-800 transition-colors border border-transparent hover:border-slate-700">
-                        <p className="text-sm font-medium line-clamp-2 text-slate-200">{item.title}</p>
-                        <p className="text-xs text-slate-500 mt-2">{dateStr}</p>
-                      </a>
-                    )})}
-                  </div>
-                </motion.div>
+                {/* AI News Scorer (replaces old basic news list) */}
+                <AINewsScorer sentiment={sentiment} loading={sentimentLoading} />
 
               </div>
             </div>

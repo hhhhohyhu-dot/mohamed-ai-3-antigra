@@ -4,18 +4,30 @@ import { fetchChat } from '../services/api';
 import { Send, MessageSquare } from 'lucide-react';
 import { motion } from 'framer-motion';
 
-export const AIChat = ({ symbol, context }: { symbol: string, context: any }) => {
+export const AIChat = ({ symbol, context }: { 
+  symbol: string; 
+  context: {
+    price?: number;
+    indicators?: any;
+    trade_plan?: any;
+    signal?: string;
+    risk_engine_result?: any;
+    mtf?: any;
+  };
+}) => {
   const [messages, setMessages] = useState<{role: string, content: string}[]>([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
 
   const SUGGESTIONS = [
     "Should I buy now?",
-    "Best entry price",
-    "Support & Resistance",
-    "Price prediction",
-    "Trading plan",
-    "Risk analysis"
+    "What's the best entry price?",
+    "Explain the current trade plan",
+    "What are key Support & Resistance levels?",
+    "How does the MTF analysis affect this setup?",
+    "What's the Risk/Reward on this trade?",
+    "Is the trend aligned across timeframes?",
+    "Explain why the Risk Engine rejected the trade",
   ];
 
   const handleSend = async (text: string) => {

@@ -7,7 +7,7 @@ import json
 from dotenv import load_dotenv
 load_dotenv()
 import asyncio
-from api import dashboard, chart, analyze, news, indicators, sentiment, chat, macro, options, trades, auth, ws
+from api import dashboard, chart, analyze, news, indicators, sentiment, chat, macro, macro_ai, options, trades, auth, ws
 from database import engine, Base
 
 class SafeJSONResponse(JSONResponse):
@@ -52,6 +52,8 @@ async def startup_event():
         print("Continuing without database initialization to allow debugging...")
         
     # Start the WebSocket live data streamer in background
+    import os
+    print("DEBUG: OPENROUTER_API_KEY in main startup:", "configured" if os.environ.get("OPENROUTER_API_KEY") else "empty")
     asyncio.create_task(ws.stream_live_data())
 
 @app.get("/health")
@@ -69,14 +71,21 @@ app.include_router(indicators.router, prefix="/api/indicators", tags=["Indicator
 app.include_router(sentiment.router, prefix="/api/sentiment", tags=["Sentiment"])
 app.include_router(chat.router, prefix="/api/chat", tags=["Chat"])
 app.include_router(macro.router, prefix="/api/macro", tags=["Macro"])
+app.include_router(macro_ai.router, prefix="/api/macro", tags=["Macro AI"])
 app.include_router(options.router, prefix="/api/options", tags=["Options"])
 app.include_router(trades.router, prefix="/api/trades", tags=["Trades"])
 app.include_router(auth.router, prefix="/api/auth", tags=["Auth"])
 app.include_router(ws.router, prefix="/ws", tags=["WebSockets"])
 
 # Mount the static Next.js frontend UI
-if os.path.exists("static"):
-    app.mount("/", StaticFiles(directory="static", html=True), name="static")
+current_dir = os.path.dirname(os.path.abspath(__file__))
+static_dir = os.path.join(current_dir, "static")
+if os.path.exists(static_dir):
+    app.mount("/", StaticFiles(directory=static_dir, html=True), name="static")
+else:
+    # Fallback to local 'static' if run from backend folder directly
+    if os.path.exists("static"):
+        app.mount("/", StaticFiles(directory="static", html=True), name="static")
 
 if __name__ == "__main__":
     uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)

@@ -1,11 +1,13 @@
 import React, { useEffect, useState } from 'react';
-import { fetchMacro } from '../services/api';
-import { Activity, AlertTriangle, ArrowDownRight, ArrowUpRight, BarChart2, ShieldAlert, TrendingUp } from 'lucide-react';
+import { fetchMacro, fetchMacroCommentary } from '../services/api';
+import { Activity, AlertTriangle, ArrowDownRight, ArrowUpRight, BarChart2, ShieldAlert, TrendingUp, Brain, Zap } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 export const MacroDashboard = () => {
   const [macroData, setMacroData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [commentary, setCommentary] = useState<any>(null);
+  const [commentaryLoading, setCommentaryLoading] = useState(false);
 
   useEffect(() => {
     loadMacro();
@@ -16,6 +18,12 @@ export const MacroDashboard = () => {
     try {
       const data = await fetchMacro();
       setMacroData(data);
+      // Load AI commentary in background after macro data loads
+      setCommentaryLoading(true);
+      fetchMacroCommentary()
+        .then(res => setCommentary(res?.commentary || null))
+        .catch(() => setCommentary(null))
+        .finally(() => setCommentaryLoading(false));
     } catch (e) {
       console.error(e);
     } finally {
@@ -120,6 +128,73 @@ export const MacroDashboard = () => {
           )}
         </div>
       </div>
+
+      {/* AI Macro Commentary */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.2 }}
+        className="bg-slate-900/50 border border-indigo-500/20 rounded-xl p-6 backdrop-blur-sm"
+      >
+        <h2 className="text-lg font-semibold mb-4 flex items-center">
+          <Brain className="mr-2 text-indigo-400" size={20} />
+          AI Macro Commentary
+        </h2>
+        {commentaryLoading && (
+          <div className="flex items-center gap-3 text-slate-400">
+            <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-indigo-400" />
+            <span className="text-sm">Generating AI commentary...</span>
+          </div>
+        )}
+        {commentary && !commentaryLoading && (
+          <div className="space-y-4">
+            {/* Bias + Risk Level badges */}
+            <div className="flex flex-wrap gap-2 mb-2">
+              {commentary.bias && (
+                <span className={`text-xs font-bold px-3 py-1 rounded-full border ${
+                  commentary.bias === 'Risk-On' ? 'bg-emerald-500/15 border-emerald-500/30 text-emerald-400' :
+                  commentary.bias === 'Risk-Off' ? 'bg-rose-500/15 border-rose-500/30 text-rose-400' :
+                  'bg-yellow-500/15 border-yellow-500/30 text-yellow-400'
+                }`}>
+                  {commentary.bias}
+                </span>
+              )}
+              {commentary.risk_level && (
+                <span className={`text-xs font-bold px-3 py-1 rounded-full border ${
+                  commentary.risk_level === 'Low' ? 'bg-emerald-500/15 border-emerald-500/30 text-emerald-400' :
+                  commentary.risk_level === 'High' || commentary.risk_level === 'Extreme' ? 'bg-rose-500/15 border-rose-500/30 text-rose-400' :
+                  'bg-yellow-500/15 border-yellow-500/30 text-yellow-400'
+                }`}>
+                  Risk: {commentary.risk_level}
+                </span>
+              )}
+            </div>
+            {/* Key theme */}
+            {commentary.key_theme && (
+              <div className="flex items-start gap-2">
+                <Zap className="w-4 h-4 text-yellow-400 flex-shrink-0 mt-0.5" />
+                <p className="text-sm font-semibold text-yellow-300">{commentary.key_theme}</p>
+              </div>
+            )}
+            {/* Main commentary */}
+            {commentary.commentary && (
+              <p className="text-sm text-slate-300 leading-relaxed italic border-l-2 border-indigo-500/40 pl-3">
+                "{commentary.commentary}"
+              </p>
+            )}
+            {/* Actionable insight */}
+            {commentary.actionable_insight && (
+              <div className="bg-indigo-500/10 border border-indigo-500/20 rounded-lg p-3">
+                <p className="text-xs font-semibold text-indigo-400 mb-1">Actionable Insight</p>
+                <p className="text-sm text-slate-300">{commentary.actionable_insight}</p>
+              </div>
+            )}
+          </div>
+        )}
+        {!commentary && !commentaryLoading && (
+          <p className="text-slate-500 text-sm">AI commentary will appear after macro data loads.</p>
+        )}
+      </motion.div>
 
       {/* Heatmap des Indicateurs */}
       <div className="bg-slate-900/50 border border-slate-800 rounded-xl p-6 backdrop-blur-sm">
