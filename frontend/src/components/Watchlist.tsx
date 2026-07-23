@@ -38,6 +38,25 @@ export const Watchlist = ({ onSelectSymbol }: { onSelectSymbol: (sym: string) =>
     setWatchlist(watchlist.filter(s => s !== sym));
   };
 
+  const formatWatchlistPrice = (price: number, symbol: string) => {
+    if (price === undefined || price === null || isNaN(price)) return '---';
+    const sym = symbol.toUpperCase();
+    const isForex = sym.includes('=X') || (sym.length === 6 && !sym.includes('-')) || sym.includes('/');
+    const isJpy = sym.includes('JPY') || (isForex && price > 50);
+    
+    const formatted = isForex ? price.toFixed(isJpy ? 3 : 5) : price.toFixed(2);
+    
+    let prefix = '$';
+    if (isForex) {
+      if (sym.includes('JPY')) prefix = '¥';
+      else if (sym.includes('GBP')) prefix = '£';
+      else if (sym.includes('EUR')) prefix = '€';
+      else if (sym.endsWith('USD') || sym.includes('USD')) prefix = '$';
+      else prefix = '';
+    }
+    return `${prefix}${formatted}`;
+  };
+
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="bg-slate-900 rounded-2xl border border-slate-800 p-6 shadow-xl">
       <h2 className="text-2xl font-bold mb-6">Watchlist</h2>
@@ -63,7 +82,7 @@ export const Watchlist = ({ onSelectSymbol }: { onSelectSymbol: (sym: string) =>
               <div className="flex items-center space-x-4">
                 {symData ? (
                   <>
-                    <span className="font-semibold">${symData.price?.toFixed(2)}</span>
+                    <span className="font-semibold">{formatWatchlistPrice(symData.price, sym)}</span>
                     <span className={`flex items-center ${symData.change >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
                       {symData.change >= 0 ? <TrendingUp size={16} className="mr-1"/> : <TrendingDown size={16} className="mr-1"/>}
                       {symData.change_percent?.toFixed(2)}%

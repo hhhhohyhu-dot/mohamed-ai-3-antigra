@@ -158,9 +158,21 @@ def generate_trading_plan(symbol: str, indicators: dict, capital: float = None, 
             "plan": None
         }
 
+    # Detect if Forex symbol
+    symbol_upper = symbol.upper().strip()
+    is_forex = symbol_upper.endswith("=X") or (len(symbol_upper) == 6 and symbol_upper.isalpha()) or "/" in symbol_upper or "-" in symbol_upper
+
     capital_instruction = ""
     if capital is not None and capital > 0:
-        capital_instruction = f"\n    USER CAPITAL: ${capital:.2f}\n    7. Position Sizing: Calculate the EXACT dollar amount to invest ('position_amount') using a strict max 2% risk rule based on the entry and stop-loss distance. Explain the math in 'position_size_rationale'."
+        capital_instruction = f"\n    7. Position Sizing: Calculate the EXACT dollar amount to invest ('position_amount') using a strict max 2% risk rule based on the entry and stop-loss distance. Explain the math in 'position_size_rationale'."
+
+    forex_instruction = ""
+    if is_forex:
+        forex_instruction = """
+    FOREX ASSET DETECTED:
+    - You must output all price fields (entry, sl, tp1, tp2, tp3, strong_support, strong_resistance, invalidation) using high-precision decimal representation (up to 5 decimal places, e.g. 1.08345. For JPY pairs, use 3 decimal places, e.g. 156.450).
+    - Under the 'plan' key, you MUST calculate and populate the 'forex_pips' object representing the pip distance from the entry level to each price level (1 pip = 0.0001 for normal pairs, 0.01 for JPY pairs).
+    """
 
     # Build MTF context string
     mtf_context_str = ""
@@ -188,7 +200,7 @@ def generate_trading_plan(symbol: str, indicators: dict, capital: float = None, 
     fib_levels = {k: v for k, v in indicators.items() if k.startswith("Fib_")}
     fib_str = ""
     if fib_levels:
-        fib_str = "\n    FIBONACCI LEVELS: " + ", ".join([f"{k.replace('Fib_', 'Fib ')}: {v:.2f}" for k, v in fib_levels.items() if v])
+        fib_str = "\n    FIBONACCI LEVELS: " + ", ".join([f"{k.replace('Fib_', 'Fib ')}: {v:.4f}" for k, v in fib_levels.items() if v])
 
     messages = [
         {"role": "system", "content": "You are a 30-year veteran institutional trader and risk manager. You prioritize capital preservation, smart money concepts, and strict risk management. Output only valid JSON."},
@@ -202,14 +214,17 @@ def generate_trading_plan(symbol: str, indicators: dict, capital: float = None, 
     {fib_str}
     {mtf_context_str}
     {macro_context_str}
+    {forex_instruction}
 
     CRITICAL INSTRUCTIONS FOR ANALYSIS:
     1. Institutional Order Flow: Check 'Bullish_OB', 'Bearish_OB', and Liquidity markers. Smart money hunts liquidity.
     2. Market Structure: Consider the 'Market_Structure' (e.g., Bullish HH/HL vs Bearish LH/LL). Trade with the trend.
     3. Fibonacci Levels: Identify where price is relative to the provided Fib levels for pullbacks.
     4. Risk Management: Heed the 'Suggested_Risk_Pct' and use ATR for Stop Loss. Capital preservation is key.
-    5. Candlestick & Volume: Confirm entries with 'Candlestick_Pattern' and 'Volume_Surge'.
+    5. Candlestick & Volume: Confirm entries with 'Candlestick_Pattern' and 'Volume_Surge' (if equity/crypto, skip volume check for forex).
     6. MTF Confluence: Only take high-conviction trades where at least 2 of 3 timeframes agree.{capital_instruction}
+    8. Trading Session & Timing: Determine the best session (London, New York, Tokyo) or time to enter the trade based on volatility and setups.
+    9. Trade Duration: Suggest how long the trade is expected to be held (e.g., hours, days).
 
     Respond ONLY with a valid JSON object (no markdown, no extra text) with:
     - signal: "Buy", "Sell", or "Hold"
@@ -228,6 +243,13 @@ def generate_trading_plan(symbol: str, indicators: dict, capital: float = None, 
         - position_amount: Exact dollar amount to invest (if capital is provided, else null)
         - position_size_rationale: 1-sentence explanation of the math
         - partial_exit_plan: string — when to take partial profits (e.g., "Close 50% at TP1, trail stop to entry")
+        - best_entry_time: string (e.g. "London Open / London Session (07:00 - 10:00 UTC)", "New York Morning Session (13:30 - 16:00 UTC)")
+        - holding_period: string (e.g. "Intraday (4 to 12 hours)", "Swing trade (1 to 3 days)", "Scalp (30 mins to 2 hours)")
+        - forex_pips: object (if Forex asset, else null) with keys:
+            - sl_pips: number (distance to stop loss in pips, e.g. 35)
+            - tp1_pips: number (distance to TP1 in pips, e.g. 50)
+            - tp2_pips: number (distance to TP2 in pips, e.g. 95)
+            - tp3_pips: number (distance to TP3 in pips, e.g. 140)
     - forecast: An object containing:
         - tomorrow: object with `trend` ("Bullish", "Bearish", "Neutral") and `confidence` (0-100) and `reason` (1 short phrase)
         - week: object with `trend` ("Bullish", "Bearish", "Neutral") and `confidence` (0-100) and `reason` (1 short phrase)

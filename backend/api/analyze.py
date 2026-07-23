@@ -69,7 +69,8 @@ def post_analyze(request: AnalyzeRequest):
             ai_confidence=confidence,
             entry=entry,
             sl=sl,
-            tp=tp
+            tp=tp,
+            symbol=request.symbol
         )
 
         # Override AI if rules are not met

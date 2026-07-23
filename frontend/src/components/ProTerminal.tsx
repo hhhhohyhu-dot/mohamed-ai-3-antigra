@@ -161,12 +161,28 @@ export const ProTerminal: React.FC<ProTerminalProps> = ({ initialSymbol = 'AAPL'
 
   const currentPrice = livePrice || (chartData.length > 0 ? chartData[chartData.length - 1].close : 0);
 
+  const isForex = symbol.includes('=X') || (symbol.length === 6 && !symbol.includes('-')) || symbol.includes('/');
+  const isJpy = symbol.toUpperCase().includes('JPY') || (isForex && currentPrice > 50);
+
+  const formatTerminalPrice = (price: number) => {
+    if (price === undefined || price === null || isNaN(price)) return '---';
+    return isForex ? price.toFixed(isJpy ? 3 : 5) : price.toFixed(2);
+  };
+
+  const formatPositionPrice = (price: number, sym: string) => {
+    if (price === undefined || price === null || isNaN(price)) return '---';
+    const s = sym.toUpperCase();
+    const isF = s.includes('=X') || (s.length === 6 && !s.includes('-')) || s.includes('/');
+    const isJ = s.includes('JPY') || (isF && price > 50);
+    return isF ? price.toFixed(isJ ? 3 : 5) : price.toFixed(2);
+  };
+
   const executeTradeAction = async (type: 'BUY' | 'SELL') => {
     if (!currentPrice) return;
     try {
       addLog(`Sending ${type} order to exchange...`, 'info');
       await executeTrade(symbol, type, tradeVolume, currentPrice);
-      addLog(`Order executed: ${type} ${tradeVolume} ${symbol} @ ${currentPrice.toFixed(2)}`, 'success');
+      addLog(`Order executed: ${type} ${tradeVolume} ${symbol} @ ${formatTerminalPrice(currentPrice)}`, 'success');
       loadBackendTrades();
     } catch (e) {
       addLog(`Trade rejected: Server error`, 'error');
@@ -251,8 +267,8 @@ export const ProTerminal: React.FC<ProTerminalProps> = ({ initialSymbol = 'AAPL'
                     className={`cursor-pointer border-b border-slate-800/50 hover:bg-blue-600/20 transition-colors ${symbol === item.sym ? 'bg-blue-600/30 text-white' : ''}`}
                   >
                     <td className="py-2 px-2 font-medium">{item.sym}</td>
-                    <td className="py-2 px-2 text-right text-red-400">{symbol === item.sym && currentPrice ? (currentPrice * 0.9998).toFixed(2) : '---'}</td>
-                    <td className="py-2 px-2 text-right text-blue-400">{symbol === item.sym && currentPrice ? (currentPrice * 1.0002).toFixed(2) : '---'}</td>
+                    <td className="py-2 px-2 text-right text-red-400">{symbol === item.sym && currentPrice ? formatTerminalPrice(currentPrice * 0.9998) : '---'}</td>
+                    <td className="py-2 px-2 text-right text-blue-400">{symbol === item.sym && currentPrice ? formatTerminalPrice(currentPrice * 1.0002) : '---'}</td>
                   </tr>
                 ))}
               </tbody>
@@ -295,14 +311,14 @@ export const ProTerminal: React.FC<ProTerminalProps> = ({ initialSymbol = 'AAPL'
                   className="flex-1 bg-red-600 hover:bg-red-500 text-white py-2 rounded text-xs font-bold transition flex flex-col items-center"
                 >
                   <span>SELL</span>
-                  <span className="font-mono mt-0.5 opacity-80">{currentPrice ? (currentPrice * 0.9998).toFixed(2) : '---'}</span>
+                  <span className="font-mono mt-0.5 opacity-80">{currentPrice ? formatTerminalPrice(currentPrice * 0.9998) : '---'}</span>
                 </button>
                 <button 
                   onClick={() => executeTradeAction('BUY')}
                   className="flex-1 bg-blue-600 hover:bg-blue-500 text-white py-2 rounded text-xs font-bold transition flex flex-col items-center"
                 >
                   <span>BUY</span>
-                  <span className="font-mono mt-0.5 opacity-80">{currentPrice ? (currentPrice * 1.0002).toFixed(2) : '---'}</span>
+                  <span className="font-mono mt-0.5 opacity-80">{currentPrice ? formatTerminalPrice(currentPrice * 1.0002) : '---'}</span>
                 </button>
               </div>
             </div>
@@ -416,7 +432,7 @@ export const ProTerminal: React.FC<ProTerminalProps> = ({ initialSymbol = 'AAPL'
                       <td className={`py-1 px-4 text-left font-bold ${pos.type === 'BUY' ? 'text-blue-400' : 'text-red-400'}`}>{pos.type}</td>
                       <td className="py-1 px-4">{pos.volume}</td>
                       <td className="py-1 px-4 text-left font-bold">{pos.symbol}</td>
-                      <td className="py-1 px-4 font-mono">{pos.entryPrice.toFixed(2)}</td>
+                      <td className="py-1 px-4 font-mono">{formatPositionPrice(pos.entryPrice, pos.symbol)}</td>
                       <td className="py-1 px-4">0.00</td>
                       <td className="py-1 px-4">0.00</td>
                       <td className={`py-1 px-4 font-mono font-bold ${pnl >= 0 ? 'text-blue-400' : 'text-red-400'}`}>
@@ -454,8 +470,8 @@ export const ProTerminal: React.FC<ProTerminalProps> = ({ initialSymbol = 'AAPL'
                     <td className={`py-1 px-4 text-left font-bold ${pos.type === 'BUY' ? 'text-blue-400' : 'text-red-400'}`}>{pos.type}</td>
                     <td className="py-1 px-4">{pos.volume}</td>
                     <td className="py-1 px-4 text-left font-bold">{pos.symbol}</td>
-                    <td className="py-1 px-4 font-mono">{pos.entryPrice.toFixed(2)}</td>
-                    <td className="py-1 px-4 font-mono">{pos.closePrice.toFixed(2)}</td>
+                    <td className="py-1 px-4 font-mono">{formatPositionPrice(pos.entryPrice, pos.symbol)}</td>
+                    <td className="py-1 px-4 font-mono">{formatPositionPrice(pos.closePrice, pos.symbol)}</td>
                     <td className={`py-1 px-4 font-mono font-bold ${pos.finalPnl >= 0 ? 'text-blue-400' : 'text-red-400'}`}>
                       {pos.finalPnl >= 0 ? '+' : ''}{pos.finalPnl.toFixed(2)}
                     </td>

@@ -1,9 +1,15 @@
 from services.risk_engine import calculate_risk
 
-def generate_strict_signal(indicators: dict, ai_confidence: int, entry: float, sl: float, tp: float) -> dict:
+def generate_strict_signal(indicators: dict, ai_confidence: int, entry: float, sl: float, tp: float, symbol: str = "") -> dict:
     """
     Generates a strict trading signal enforcing all institutional rules.
     """
+    # Detect if Forex symbol to bypass volume surge confirmation (OTC market lacks reliable central volume)
+    is_forex = False
+    if symbol:
+        symbol_upper = symbol.upper().strip()
+        is_forex = symbol_upper.endswith("=X") or (len(symbol_upper) == 6 and symbol_upper.isalpha()) or "/" in symbol_upper or "-" in symbol_upper
+
     # 1. Trend
     trend_strong = indicators.get("Trend_Strength") in ["Strong", "Very Strong"]
     
@@ -16,8 +22,8 @@ def generate_strict_signal(indicators: dict, ai_confidence: int, entry: float, s
     # 4. ICT/SMC confirmed
     smc_confirmed = indicators.get("Bullish_OB") or indicators.get("Bearish_OB") or indicators.get("FVG_Present") or indicators.get("Breaker_Block") or indicators.get("Mitigation_Block")
     
-    # 5. Volume Confirmed
-    volume_confirmed = indicators.get("Volume_Surge")
+    # 5. Volume Confirmed (Bypassed for Forex since volume is decentralised / unavailable)
+    volume_confirmed = True if is_forex else indicators.get("Volume_Surge")
     
     # 6. AI Confidence >= 90%
     ai_confirmed = ai_confidence >= 90
@@ -40,5 +46,6 @@ def generate_strict_signal(indicators: dict, ai_confidence: int, entry: float, s
         "signal": "APPROVED" if approved else "NO TRADE",
         "reasons_for_rejection": reasons,
         "risk_evaluation": risk_evaluation,
-        "ai_confidence": ai_confidence
+        "ai_confidence": ai_confidence,
+        "is_forex_bypassed_volume": is_forex
     }

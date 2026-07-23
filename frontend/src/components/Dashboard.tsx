@@ -32,6 +32,31 @@ export const Dashboard = () => {
   const [capital, setCapital] = useState<number>(10000);
   const [sentimentLoading, setSentimentLoading] = useState(false);
 
+  const isForex = symbol.includes('=X') || (symbol.length === 6 && !symbol.includes('-')) || symbol.includes('/');
+  const isJpy = symbol.toUpperCase().includes('JPY') || (isForex && dashboardData && dashboardData.price > 50);
+
+  const formatHeaderPrice = (price: number) => {
+    if (price === undefined || price === null) return '---';
+    return isForex ? price.toFixed(isJpy ? 3 : 5) : price.toFixed(2);
+  };
+
+  const formatHeaderChange = (change: number) => {
+    if (change === undefined || change === null) return '---';
+    return isForex ? change.toFixed(isJpy ? 3 : 5) : change.toFixed(2);
+  };
+
+  const getHeaderCurrencyPrefix = () => {
+    if (isForex) {
+      const sym = symbol.toUpperCase();
+      if (sym.includes('JPY')) return '¥';
+      if (sym.includes('GBP')) return '£';
+      if (sym.includes('EUR')) return '€';
+      if (sym.endsWith('USD') || sym.includes('USD')) return '$';
+      return '';
+    }
+    return '$';
+  };
+
   const loadData = async (sym: string) => {
     setLoading(true);
     setSentiment(null);
@@ -175,10 +200,10 @@ export const Dashboard = () => {
                       <h2 className="text-2xl font-bold">{symbol}</h2>
                       {dashboardData && (
                         <div className="flex items-center space-x-3 mt-2">
-                          <span className="text-3xl font-semibold">${dashboardData.price?.toFixed(2)}</span>
+                          <span className="text-3xl font-semibold">{getHeaderCurrencyPrefix()}{formatHeaderPrice(dashboardData.price)}</span>
                           <span className={`flex items-center ${dashboardData.change >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
                             {dashboardData.change >= 0 ? <TrendingUp size={20} className="mr-1"/> : <TrendingDown size={20} className="mr-1"/>}
-                            {dashboardData.change?.toFixed(2)} ({dashboardData.change_percent?.toFixed(2)}%)
+                            {formatHeaderChange(dashboardData.change)} ({dashboardData.change_percent?.toFixed(2)}%)
                           </span>
                         </div>
                       )}
@@ -307,6 +332,7 @@ export const Dashboard = () => {
                 {/* Trading Plan Card */}
                 {analysis && analysis.plan && analysis.signal !== 'Error' && analysis.signal !== 'NO TRADE' && (
                   <TradingPlanCard 
+                    symbol={symbol}
                     plan={analysis.plan} 
                     signal={analysis.signal} 
                     explanation={analysis.explanation}
