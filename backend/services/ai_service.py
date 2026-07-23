@@ -20,21 +20,13 @@ if api_key:
     )
     # Extensive list of free models to try in order (fallback chain)
     MODELS = [
-        "google/gemini-2.0-flash-lite-preview-02-05:free",
-        "google/gemini-2.0-pro-exp-02-05:free",
-        "google/gemini-2.0-flash-exp:free",
-        "meta-llama/llama-3.3-70b-instruct:free",
-        "deepseek/deepseek-r1-distill-llama-70b:free",
-        "deepseek/deepseek-r1:free",
-        "deepseek/deepseek-chat:free",
-        "qwen/qwen-2.5-coder-32b-instruct:free",
-        "qwen/qwen-2.5-72b-instruct:free",
-        "cognitivecomputations/dolphin3.0-r1-mistral-24b:free",
-        "nousresearch/hermes-3-llama-3.1-405b:free",
-        "meta-llama/llama-3.1-8b-instruct:free",
-        "huggingfaceh4/zephyr-7b-beta:free",
-        "openchat/openchat-7b:free",
-        "gryphe/mythomax-l2-13b:free"
+        "openrouter/free",
+        "google/gemma-4-31b-it:free",
+        "google/gemma-4-26b-a4b-it:free",
+        "poolside/laguna-s-2.1:free",
+        "poolside/laguna-xs-2.1:free",
+        "cohere/north-mini-code:free",
+        "openai/gpt-oss-20b:free"
     ]
 else:
     client = None
