@@ -157,3 +157,8 @@ export const fetchCorrelation = async () => {
   return res.json();
 };
 
+export const fetchTopOpportunity = async () => {
+  const res = await fetch(`${API_URL}/analyze/top-opportunity`);
+  return res.json();
+};
+

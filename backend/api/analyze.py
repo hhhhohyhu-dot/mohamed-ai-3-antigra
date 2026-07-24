@@ -2,9 +2,10 @@ from fastapi import APIRouter
 from pydantic import BaseModel
 from typing import Dict, Any, Optional
 from services.ai_service import generate_trading_plan
-from services.signal_engine import generate_strict_signal
-from services.indicator_service import calculate_mtf_indicators
+from services.signal_engine import generate_strict_signal, calculate_technical_score
+from services.indicator_service import calculate_mtf_indicators, calculate_indicators
 from services.macro_service import get_macro_data
+from services.data_service import get_historical_data
 
 router = APIRouter()
 
@@ -96,3 +97,68 @@ def post_analyze(request: AnalyzeRequest):
         }
 
     return {"symbol": request.symbol, "analysis": analysis}
+
+
+SCANNED_ASSETS = [
+    "EURUSD=X", "GBPUSD=X", "USDJPY=X", "USDCAD=X", "AUDUSD=X",
+    "BTC-USD", "ETH-USD", "GC=F", "^GSPC"
+]
+
+@router.get("/top-opportunity")
+def get_top_opportunity():
+    """
+    Scans a set of forex, crypto, and commodity assets.
+    Returns the asset with the highest technical score conviction.
+    """
+    best_symbol = None
+    best_score = 50
+    best_signal = "Hold"
+    best_price = 0.0
+    max_strength = -1  # Set to -1 to allow pick even if slight conviction
+
+    for symbol in SCANNED_ASSETS:
+        try:
+            df = get_historical_data(symbol, period="1mo", interval="1d")
+            if df.empty or len(df) < 15:
+                continue
+
+            indicators = calculate_indicators(df)
+            latest_price = float(df.iloc[-1]['close'])
+            
+            scoring_indicators = indicators.copy()
+            scoring_indicators["close"] = latest_price
+
+            score = calculate_technical_score(scoring_indicators, symbol)
+            strength = abs(score - 50)
+
+            if score >= 72:
+                signal = "Strong Buy" if score >= 88 else "Buy"
+            elif score <= 30:
+                signal = "Strong Sell" if score <= 12 else "Sell"
+            else:
+                signal = "Hold"
+
+            # Re-evaluate logic: even if it is a "Hold", if it's the strongest relative deviation, we can pick it
+            if strength > max_strength:
+                max_strength = strength
+                # Clean up symbol for frontend UI
+                best_symbol = symbol.replace("=X", "")
+                best_score = score
+                best_signal = signal
+                best_price = latest_price
+        except Exception as e:
+            print(f"Error scanning {symbol}: {e}")
+            continue
+
+    if not best_symbol:
+        best_symbol = "EURUSD"
+        best_score = 50
+        best_signal = "Hold"
+        best_price = 1.0823
+
+    return {
+        "symbol": best_symbol,
+        "score": best_score,
+        "signal": best_signal,
+        "price": best_price
+    }

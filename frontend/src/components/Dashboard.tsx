@@ -17,7 +17,7 @@ import { MTFAnalysis } from './MTFAnalysis';
 import { AINewsScorer } from './AINewsScorer';
 import { EconomicCalendarCard } from './EconomicCalendarCard';
 import { CorrelationHeatmap } from './CorrelationHeatmap';
-import { fetchChart, fetchDashboard, fetchIndicators, fetchNews, fetchSentiment, fetchAnalyze } from '../services/api';
+import { fetchChart, fetchDashboard, fetchIndicators, fetchNews, fetchSentiment, fetchAnalyze, fetchTopOpportunity } from '../services/api';
 import { Activity, TrendingUp, TrendingDown, MessageSquare, Newspaper, Target, LayoutDashboard, List, Briefcase, Bell, Globe, Monitor } from 'lucide-react';
 import { motion } from 'framer-motion';
 
@@ -33,6 +33,21 @@ export const Dashboard = () => {
   const [loading, setLoading] = useState(false);
   const [capital, setCapital] = useState<number>(10000);
   const [sentimentLoading, setSentimentLoading] = useState(false);
+
+  const [topOpportunity, setTopOpportunity] = useState<any>(null);
+  const [scanningOpportunity, setScanningOpportunity] = useState(false);
+
+  const loadTopOpportunity = async () => {
+    setScanningOpportunity(true);
+    try {
+      const res = await fetchTopOpportunity();
+      setTopOpportunity(res);
+    } catch (e) {
+      console.error("Failed to load top opportunity", e);
+    } finally {
+      setScanningOpportunity(false);
+    }
+  };
 
   const isForex = symbol.includes('=X') || (symbol.length === 6 && !symbol.includes('-')) || symbol.includes('/');
   const isJpy = symbol.toUpperCase().includes('JPY') || (isForex && dashboardData && dashboardData.price > 50);
@@ -100,6 +115,7 @@ export const Dashboard = () => {
 
   useEffect(() => {
     loadData(symbol);
+    loadTopOpportunity();
   }, [symbol]);
 
   const handleSelectSymbol = (sym: string) => {
@@ -145,6 +161,34 @@ export const Dashboard = () => {
               >
                 Analyze
               </button>
+              {topOpportunity && (
+                <button
+                  onClick={() => {
+                    setSymbol(topOpportunity.symbol);
+                    loadData(topOpportunity.symbol);
+                  }}
+                  className={`flex items-center gap-2 px-3 py-2 rounded-lg border text-xs font-bold transition-all relative overflow-hidden group ${
+                    topOpportunity.signal?.includes("Buy")
+                      ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/20'
+                      : topOpportunity.signal?.includes("Sell")
+                      ? 'bg-rose-500/10 border-rose-500/30 text-rose-400 hover:bg-rose-500/20'
+                      : 'bg-slate-800 border-slate-700 text-slate-300 hover:bg-slate-700'
+                  }`}
+                  title={`Click to analyze ${topOpportunity.symbol} instantly`}
+                >
+                  <span className="flex h-2 w-2 relative">
+                    <span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${
+                      topOpportunity.signal?.includes("Buy") ? 'bg-emerald-400' : topOpportunity.signal?.includes("Sell") ? 'bg-rose-400' : 'bg-slate-400'
+                    }`}></span>
+                    <span className={`relative inline-flex rounded-full h-2 w-2 ${
+                      topOpportunity.signal?.includes("Buy") ? 'bg-emerald-500' : topOpportunity.signal?.includes("Sell") ? 'bg-rose-500' : 'bg-slate-500'
+                    }`}></span>
+                  </span>
+                  <span className="uppercase text-[9px] text-slate-500 font-semibold tracking-wider">Best Setup:</span>
+                  <span className="font-mono text-white tracking-wide">{topOpportunity.symbol}</span>
+                  <span className="px-1.5 py-0.5 rounded text-[8px] bg-slate-950 border border-slate-800 uppercase tracking-wider">{topOpportunity.signal} ({topOpportunity.score})</span>
+                </button>
+              )}
             </div>
           </div>
           
